@@ -34,7 +34,8 @@ const scheduleSchema = z.object({
   professorId: z.string().min(1, { message: "Debe seleccionar un profesor" }),
   day: z.string() as z.ZodType<WeekDay>,
   startTime: z.string().min(1, { message: "Debe seleccionar una hora de inicio" }),
-  endTime: z.string().min(1, { message: "Debe seleccionar una hora de fin" })
+  endTime: z.string().min(1, { message: "Debe seleccionar una hora de fin" }),
+  location: z.string().optional(),
 }).refine((data) => {
   // Check that end time is after start time
   return data.endTime > data.startTime;
@@ -434,7 +435,7 @@ export default function Schedule() {
                             ) : null;
                           })
                         ) : (
-                          <SelectItem disabled value="">
+                          <SelectItem value="no-professors" disabled>
                             No hay profesores asignados a esta materia
                           </SelectItem>
                         )}
