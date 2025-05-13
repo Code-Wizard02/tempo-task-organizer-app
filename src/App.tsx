@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
+import { useState } from "react";
 
 // Contextos
 import { AuthProvider } from "@/contexts/auth-context";
@@ -24,50 +25,81 @@ import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="light">
-      <TooltipProvider>
-        <AuthProvider>
-          <TaskProvider>
-            <SubjectProvider>
-              <ProfessorProvider>
-                <ScheduleProvider>
-                  <Toaster />
-                  <Sonner />
-                  <BrowserRouter>
-                    <Routes>
-                      {/* Rutas públicas */}
-                      <Route path="/" element={<Index />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/register" element={<Register />} />
+const App = () => {
+  const [error, setError] = useState<Error | null>(null);
 
-                      {/* Rutas protegidas */}
-                      <Route element={<Layout />}>
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/tasks" element={<Tasks />} />
-                        {/* Aquí irán las rutas adicionales como /subjects, /professors, /schedule, etc. */}
-                        {/* Placeholder para futuras páginas */}
-                        <Route path="/subjects" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Materias - En desarrollo</h1></div>} />
-                        <Route path="/professors" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Profesores - En desarrollo</h1></div>} />
-                        <Route path="/schedule" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Horario - En desarrollo</h1></div>} />
-                        <Route path="/profile" element={<div className="p-4"><h1 className="text-xl font-semibold">Perfil - En desarrollo</h1></div>} />
-                      </Route>
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md space-y-4 rounded-lg border border-destructive bg-card p-6 shadow-lg">
+          <h1 className="text-2xl font-bold text-destructive">Error en la aplicación</h1>
+          <p className="text-muted-foreground">{error.message}</p>
+          <pre className="mt-4 max-h-80 overflow-auto rounded bg-muted p-4 text-xs">
+            {error.stack}
+          </pre>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 w-full rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
+          >
+            Reiniciar aplicación
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-                      {/* Ruta para páginas no encontradas */}
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </BrowserRouter>
-                </ScheduleProvider>
-              </ProfessorProvider>
-            </SubjectProvider>
-          </TaskProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light">
+        <TooltipProvider>
+          <AuthProvider>
+            <TaskProvider>
+              <SubjectProvider>
+                <ProfessorProvider>
+                  <ScheduleProvider>
+                    <Toaster />
+                    <Sonner />
+                    <BrowserRouter>
+                      <Routes>
+                        {/* Rutas públicas */}
+                        <Route path="/" element={<Index />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+
+                        {/* Rutas protegidas */}
+                        <Route element={<Layout />}>
+                          <Route path="/dashboard" element={<Dashboard />} />
+                          <Route path="/tasks" element={<Tasks />} />
+                          {/* Aquí irán las rutas adicionales como /subjects, /professors, /schedule, etc. */}
+                          {/* Placeholder para futuras páginas */}
+                          <Route path="/subjects" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Materias - En desarrollo</h1></div>} />
+                          <Route path="/professors" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Profesores - En desarrollo</h1></div>} />
+                          <Route path="/schedule" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Horario - En desarrollo</h1></div>} />
+                          <Route path="/profile" element={<div className="p-4"><h1 className="text-xl font-semibold">Perfil - En desarrollo</h1></div>} />
+                        </Route>
+
+                        {/* Ruta para páginas no encontradas */}
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </BrowserRouter>
+                  </ScheduleProvider>
+                </ProfessorProvider>
+              </SubjectProvider>
+            </TaskProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
