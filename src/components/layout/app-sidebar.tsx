@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,23 @@ import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "../theme-toggle";
 import { ChevronLeft, ChevronRight, Bell, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export function AppSidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isMobile = useIsMobile();
+  // En móviles, iniciar con la barra lateral colapsada
+  const [isCollapsed, setIsCollapsed] = useState(isMobile);
   const { user } = useAuth();
+  
+  // Actualizar el estado cuando cambie el tamaño de la pantalla
+  useEffect(() => {
+    setIsCollapsed(isMobile);
+  }, [isMobile]);
 
   return (
     <div
       className={cn(
-        "flex h-screen border-r transition-all duration-300 ease-in-out relative",
+        "flex h-screen border-r transition-all duration-300 ease-in-out relative bg-sidebar",
         isCollapsed ? "w-16" : "w-64"
       )}
     >
@@ -53,7 +61,7 @@ export function AppSidebar() {
         <div className={cn("p-4 flex", isCollapsed ? "justify-center" : "justify-between")}>
           {user ? (
             <>
-              {!isCollapsed && <span className="text-sm font-medium">{user.name}</span>}
+              {!isCollapsed && <span className="text-sm font-medium truncate">{user.name}</span>}
               <div className={cn("flex space-x-1 items-center", isCollapsed && "flex-col space-y-2 space-x-0")}>
                 <Button variant="ghost" size="icon">
                   <Bell className="h-5 w-5" />
