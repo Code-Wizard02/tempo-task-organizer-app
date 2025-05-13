@@ -23,6 +23,9 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
+import Subjects from "./pages/Subjects";
+import Professors from "./pages/Professors";
+import Schedule from "./pages/Schedule";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -78,11 +81,9 @@ const App = () => {
                       <Route element={<Layout />}>
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/tasks" element={<Tasks />} />
-                        {/* Aquí irán las rutas adicionales como /subjects, /professors, /schedule, etc. */}
-                        {/* Placeholder para futuras páginas */}
-                        <Route path="/subjects" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Materias - En desarrollo</h1></div>} />
-                        <Route path="/professors" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Profesores - En desarrollo</h1></div>} />
-                        <Route path="/schedule" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Horario - En desarrollo</h1></div>} />
+                        <Route path="/subjects" element={<Subjects />} />
+                        <Route path="/professors" element={<Professors />} />
+                        <Route path="/schedule" element={<Schedule />} />
                         <Route path="/profile" element={<div className="p-4"><h1 className="text-xl font-semibold">Perfil - En desarrollo</h1></div>} />
                       </Route>
 
