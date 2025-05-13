@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useState } from "react";
 
@@ -68,29 +68,27 @@ const App = () => {
                   <ScheduleProvider>
                     <Toaster />
                     <Sonner />
-                    <BrowserRouter>
-                      <Routes>
-                        {/* Rutas públicas */}
-                        <Route path="/" element={<Index />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
+                    <Routes>
+                      {/* Rutas públicas */}
+                      <Route path="/" element={<Index />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/register" element={<Register />} />
 
-                        {/* Rutas protegidas */}
-                        <Route element={<Layout />}>
-                          <Route path="/dashboard" element={<Dashboard />} />
-                          <Route path="/tasks" element={<Tasks />} />
-                          {/* Aquí irán las rutas adicionales como /subjects, /professors, /schedule, etc. */}
-                          {/* Placeholder para futuras páginas */}
-                          <Route path="/subjects" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Materias - En desarrollo</h1></div>} />
-                          <Route path="/professors" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Profesores - En desarrollo</h1></div>} />
-                          <Route path="/schedule" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Horario - En desarrollo</h1></div>} />
-                          <Route path="/profile" element={<div className="p-4"><h1 className="text-xl font-semibold">Perfil - En desarrollo</h1></div>} />
-                        </Route>
+                      {/* Rutas protegidas */}
+                      <Route element={<Layout />}>
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/tasks" element={<Tasks />} />
+                        {/* Aquí irán las rutas adicionales como /subjects, /professors, /schedule, etc. */}
+                        {/* Placeholder para futuras páginas */}
+                        <Route path="/subjects" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Materias - En desarrollo</h1></div>} />
+                        <Route path="/professors" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Profesores - En desarrollo</h1></div>} />
+                        <Route path="/schedule" element={<div className="p-4"><h1 className="text-xl font-semibold">Página de Horario - En desarrollo</h1></div>} />
+                        <Route path="/profile" element={<div className="p-4"><h1 className="text-xl font-semibold">Perfil - En desarrollo</h1></div>} />
+                      </Route>
 
-                        {/* Ruta para páginas no encontradas */}
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </BrowserRouter>
+                      {/* Ruta para páginas no encontradas */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
                   </ScheduleProvider>
                 </ProfessorProvider>
               </SubjectProvider>
