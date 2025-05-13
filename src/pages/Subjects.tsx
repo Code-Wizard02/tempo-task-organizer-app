@@ -92,13 +92,21 @@ export default function Subjects() {
 
   const onSubmitSubject = (data: SubjectFormValues) => {
     if (editingSubject) {
-      updateSubject(editingSubject, data);
+      updateSubject(editingSubject, {
+        name: data.name,
+        color: data.color
+      });
       toast({
         title: "Materia actualizada",
         description: `La materia ${data.name} ha sido actualizada`,
       });
     } else {
-      addSubject(data);
+      // Ensure all required fields are present when adding a new subject
+      const newSubject = {
+        name: data.name,
+        color: data.color
+      };
+      addSubject(newSubject);
       toast({
         title: "Materia agregada",
         description: `La materia ${data.name} ha sido agregada`,
@@ -110,8 +118,9 @@ export default function Subjects() {
   const onSubmitProfessor = (data: ProfessorFormValues) => {
     // Add the new professor with the current subject as the only assigned subject
     const newProfessorData = {
-      ...data,
-      subjectIds: [], // This will be updated once we create the subject
+      name: data.name,
+      email: data.email,
+      subjectIds: [] // This will be updated once we create the subject
     };
     
     addProfessor(newProfessorData);

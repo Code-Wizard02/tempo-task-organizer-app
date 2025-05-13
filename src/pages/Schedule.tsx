@@ -36,10 +36,15 @@ const scheduleSchema = z.object({
   day: z.string() as z.ZodType<WeekDay>,
   startTime: z.string().min(1, { message: "Debe seleccionar una hora de inicio" }),
   endTime: z.string().min(1, { message: "Debe seleccionar una hora de fin" })
-    .refine((endTime, ctx) => {
-      const start = ctx.path && ctx.path[0] && ctx.path[0].startTime ? ctx.path[0].startTime : "";
-      return endTime > start;
-    }, { message: "La hora de fin debe ser posterior a la hora de inicio" }),
+    .superRefine((endTime, ctx) => {
+      const startTime = ctx.data?.startTime;
+      if (startTime && endTime <= startTime) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "La hora de fin debe ser posterior a la hora de inicio"
+        });
+      }
+    }),
   location: z.string().min(1, { message: "Debe ingresar una ubicación" }),
 });
 
@@ -155,13 +160,29 @@ export default function Schedule() {
 
   const onSubmit = (data: ScheduleFormValues) => {
     if (editingEntry) {
-      updateScheduleEntry(editingEntry, data);
+      updateScheduleEntry(editingEntry, {
+        subjectId: data.subjectId,
+        professorId: data.professorId,
+        day: data.day,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        location: data.location,
+      });
       toast({
         title: "Horario actualizado",
         description: "La clase ha sido actualizada exitosamente",
       });
     } else {
-      addScheduleEntry(data);
+      // Ensure all required fields are present when adding a new schedule entry
+      const newEntry = {
+        subjectId: data.subjectId,
+        professorId: data.professorId,
+        day: data.day,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        location: data.location,
+      };
+      addScheduleEntry(newEntry);
       toast({
         title: "Horario actualizado",
         description: "La clase ha sido agregada exitosamente",

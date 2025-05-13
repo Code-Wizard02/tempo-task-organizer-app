@@ -70,7 +70,13 @@ export default function Professors() {
         description: `El profesor ${data.name} ha sido actualizado`,
       });
     } else {
-      addProfessor(data);
+      // Ensure all required fields are present when adding a new professor
+      const newProfessor = {
+        name: data.name,
+        email: data.email,
+        subjectIds: data.subjectIds,
+      };
+      addProfessor(newProfessor);
       toast({
         title: "Profesor agregado",
         description: `El profesor ${data.name} ha sido agregado`,
