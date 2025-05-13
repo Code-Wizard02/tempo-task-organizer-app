@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from "@/components/ui/button";
@@ -36,16 +35,12 @@ const scheduleSchema = z.object({
   day: z.string() as z.ZodType<WeekDay>,
   startTime: z.string().min(1, { message: "Debe seleccionar una hora de inicio" }),
   endTime: z.string().min(1, { message: "Debe seleccionar una hora de fin" })
-    .superRefine((endTime, ctx) => {
-      const startTime = ctx.data?.startTime;
-      if (startTime && endTime <= startTime) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "La hora de fin debe ser posterior a la hora de inicio"
-        });
-      }
-    }),
-  location: z.string().min(1, { message: "Debe ingresar una ubicación" }),
+}).refine((data) => {
+  // Check that end time is after start time
+  return data.endTime > data.startTime;
+}, {
+  message: "La hora de fin debe ser posterior a la hora de inicio",
+  path: ["endTime"] // This targets the error message to the endTime field
 });
 
 type ScheduleFormValues = z.infer<typeof scheduleSchema>;
