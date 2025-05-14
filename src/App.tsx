@@ -1,6 +1,6 @@
 
 // Add Profile route to the App component
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route, BrowserRouter } from "react-router-dom";
 import { Layout } from "@/components/layout/layout";
 import { AuthLayout } from "@/components/layout/auth-layout";
 import NotFound from "@/pages/NotFound";
