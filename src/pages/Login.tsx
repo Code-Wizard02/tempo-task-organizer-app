@@ -1,12 +1,12 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AuthLayout } from "@/components/layout/auth-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -38,9 +38,22 @@ export default function Login() {
 
     if (validateForm()) {
       try {
-        await signIn(email, password);
+        const { error } = await signIn(email, password);
+        if (error) {
+          console.error("Error al iniciar sesión:", error);
+          toast({
+            title: "Error al iniciar sesión",
+            description: error.message || "Credenciales incorrectas",
+            variant: "destructive",
+          });
+        }
       } catch (error) {
         console.error("Error al iniciar sesión:", error);
+        toast({
+          title: "Error al iniciar sesión",
+          description: "Ha ocurrido un error inesperado",
+          variant: "destructive",
+        });
       }
     }
   };

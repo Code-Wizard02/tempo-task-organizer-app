@@ -53,7 +53,7 @@ function App() {
                       <Route path="subjects" element={<Subjects />} />
                       <Route path="professors" element={<Professors />} />
                       <Route path="schedule" element={<Schedule />} />
-                      <Route path="profile" element={<Profile />} /> {/* Add Profile route */}
+                      <Route path="profile" element={<Profile />} /> 
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>

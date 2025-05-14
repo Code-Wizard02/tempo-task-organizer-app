@@ -38,25 +38,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initial session check
   useEffect(() => {
     const checkSession = async () => {
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        // Fetch user profile
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (!error && data) {
-          setProfile(data);
+      try {
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Fetch user profile
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (!error && data) {
+            setProfile(data);
+          }
         }
+      } catch (error) {
+        console.error("Error checking session:", error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
     checkSession();
@@ -88,57 +92,85 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Sign in with email and password
   const signIn = async (email: string, password: string) => {
-    const response = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    return {
-      error: response.error,
-      data: response.data.session
-    };
+    try {
+      const response = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      return {
+        error: response.error,
+        data: response.data?.session || null
+      };
+    } catch (error) {
+      console.error("Sign in error:", error);
+      return {
+        error: error instanceof Error ? error : new Error('Unknown sign-in error'),
+        data: null
+      };
+    }
   };
 
   // Sign up with email and password
   const signUp = async (email: string, password: string, fullName: string) => {
-    const response = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name: fullName,
+    try {
+      const response = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          }
         }
-      }
-    });
-    
-    return {
-      error: response.error,
-      data: response.data.session
-    };
+      });
+      
+      return {
+        error: response.error,
+        data: response.data?.session || null
+      };
+    } catch (error) {
+      console.error("Sign up error:", error);
+      return {
+        error: error instanceof Error ? error : new Error('Unknown sign-up error'),
+        data: null
+      };
+    }
   };
 
   // Sign out
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
   };
 
   // Update user profile
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return { error: new Error("No user authenticated"), data: null };
     
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id)
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id)
+        .select()
+        .single();
+        
+      if (!error && data) {
+        setProfile(data);
+        return { data, error: null };
+      }
       
-    if (!error && data) {
-      setProfile(data);
-      return { data, error: null };
+      return { error, data: null };
+    } catch (error) {
+      console.error("Update profile error:", error);
+      return { 
+        error: error instanceof Error ? error : new Error('Unknown profile update error'), 
+        data: null 
+      };
     }
-    
-    return { error, data: null };
   };
 
   return (
