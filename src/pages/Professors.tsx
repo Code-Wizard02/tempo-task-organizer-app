@@ -1,12 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useProfessors } from "@/contexts/professor-context";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, SortAsc, SortDesc } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSubjects } from "@/contexts/subject-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +30,12 @@ export default function Professors() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProfessor, setEditingProfessor] = useState<string | null>(null);
 
+  // Filter and sort states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState<'name' | 'email'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [subjectFilter, setSubjectFilter] = useState<string>("");
+  
   const form = useForm<ProfessorFormValues>({
     resolver: zodResolver(professorSchema),
     defaultValues: {
@@ -38,6 +44,37 @@ export default function Professors() {
       subjectIds: [],
     },
   });
+  
+  // Filtered and sorted professors
+  const filteredProfessors = useMemo(() => {
+    return professors
+      .filter(professor => {
+        const matchesSearch = 
+          professor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          professor.email.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchesSubject = 
+          !subjectFilter || professor.subjectIds.includes(subjectFilter);
+        
+        return matchesSearch && matchesSubject;
+      })
+      .sort((a, b) => {
+        if (sortDirection === 'asc') {
+          return a[sortField].localeCompare(b[sortField]);
+        } else {
+          return b[sortField].localeCompare(a[sortField]);
+        }
+      });
+  }, [professors, searchTerm, sortField, sortDirection, subjectFilter]);
+
+  const toggleSort = (field: 'name' | 'email') => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   const openCreateDialog = () => {
     form.reset({ name: "", email: "", subjectIds: [] });
@@ -70,7 +107,6 @@ export default function Professors() {
         description: `El profesor ${data.name} ha sido actualizado`,
       });
     } else {
-      // Ensure all required fields are present when adding a new professor
       const newProfessor = {
         name: data.name,
         email: data.email,
@@ -94,12 +130,52 @@ export default function Professors() {
         </Button>
       </div>
       
+      {/* Filters */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Filtros y búsqueda</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre o email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            
+            <Select
+              value={subjectFilter}
+              onValueChange={setSubjectFilter}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por materia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todas las materias</SelectItem>
+                {subjects.map(subject => (
+                  <SelectItem key={subject.id} value={subject.id}>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: subject.color }}></div>
+                      {subject.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+      
       <Card>
         <CardHeader>
           <CardTitle>Lista de Profesores</CardTitle>
         </CardHeader>
         <CardContent>
-          {professors.length === 0 ? (
+          {filteredProfessors.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No hay profesores registrados</p>
             </div>
@@ -108,14 +184,32 @@ export default function Professors() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Correo Electrónico</TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => toggleSort('name')}>
+                      <div className="flex items-center">
+                        Nombre
+                        {sortField === 'name' && (
+                          sortDirection === 'asc' ? 
+                            <SortAsc className="ml-1 h-4 w-4" /> : 
+                            <SortDesc className="ml-1 h-4 w-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => toggleSort('email')}>
+                      <div className="flex items-center">
+                        Correo Electrónico
+                        {sortField === 'email' && (
+                          sortDirection === 'asc' ? 
+                            <SortAsc className="ml-1 h-4 w-4" /> : 
+                            <SortDesc className="ml-1 h-4 w-4" />
+                        )}
+                      </div>
+                    </TableHead>
                     <TableHead>Materias</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {professors.map((professor) => (
+                  {filteredProfessors.map((professor) => (
                     <TableRow key={professor.id}>
                       <TableCell className="font-medium">{professor.name}</TableCell>
                       <TableCell>{professor.email}</TableCell>

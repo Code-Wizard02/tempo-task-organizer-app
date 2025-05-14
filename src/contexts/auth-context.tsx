@@ -1,144 +1,160 @@
 
+// If this file exists and we're just updating it to use our new types
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useToast } from "@/components/ui/use-toast";
-import { useNavigate } from "react-router-dom";
+import { supabase } from '@/integrations/supabase/client';
+import type { User, Session } from '@supabase/supabase-js';
+import type { Profile } from '@/types/app-types';
 
-// Tipos
-type User = {
-  id: string;
-  name: string;
-  email: string;
-};
-
+// Authentication context type
 type AuthContextType = {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  session: Session | null;
+  profile: Profile | null;
   isLoading: boolean;
+  signIn: (email: string, password: string) => Promise<{
+    error: Error | null;
+    data: Session | null;
+  }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{
+    error: Error | null;
+    data: Session | null;
+  }>;
+  signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<{
+    error: Error | null;
+    data: Profile | null;
+  }>;
 };
 
-// Mock de usuarios para demo
-const mockUsers = [
-  { id: '1', name: 'Demo User', email: 'demo@example.com', password: 'password123' }
-];
-
-// Crear contexto
+// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Provider
+// Provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-  const navigate = useNavigate();
 
-  // Verificar si el usuario ya está autenticado
+  // Initial session check
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    const checkSession = async () => {
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        // Fetch user profile
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (!error && data) {
+          setProfile(data);
+        }
+      }
+      
+      setIsLoading(false);
+    };
+    
+    checkSession();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+          
+        setProfile(data || null);
+      } else {
+        setProfile(null);
+      }
+      
+      setIsLoading(false);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Login
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const foundUser = mockUsers.find(u => u.email === email && u.password === password);
-      
-      if (!foundUser) {
-        throw new Error('Credenciales inválidas');
-      }
-      
-      const { password: _, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-      
-      toast({
-        title: "Inicio de sesión exitoso",
-        description: `Bienvenido ${userWithoutPassword.name}`,
-      });
-      
-      navigate('/dashboard');
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error de inicio de sesión",
-        description: error.message || "Hubo un problema al iniciar sesión",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Register
-  const register = async (name: string, email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Verificar si el correo ya existe
-      if (mockUsers.some(u => u.email === email)) {
-        throw new Error('Este correo ya está registrado');
-      }
-      
-      // En una aplicación real, esto sería una llamada API para crear el usuario
-      const newUser = {
-        id: Date.now().toString(),
-        name,
-        email,
-        password // En un caso real, esto estaría hasheado
-      };
-      
-      mockUsers.push(newUser);
-      
-      // Guardar usuario en el estado (sin la contraseña)
-      const { password: _, ...userWithoutPassword } = newUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-      
-      toast({
-        title: "Registro exitoso",
-        description: "Tu cuenta ha sido creada correctamente",
-      });
-      
-      navigate('/dashboard');
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error de registro",
-        description: error.message || "Hubo un problema al crear la cuenta",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Logout
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    navigate('/login');
-    toast({
-      title: "Sesión cerrada",
-      description: "Has cerrado sesión correctamente",
+  // Sign in with email and password
+  const signIn = async (email: string, password: string) => {
+    const response = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
+    
+    return response;
+  };
+
+  // Sign up with email and password
+  const signUp = async (email: string, password: string, fullName: string) => {
+    const response = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: fullName,
+        }
+      }
+    });
+    
+    return response;
+  };
+
+  // Sign out
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  // Update user profile
+  const updateProfile = async (updates: Partial<Profile>) => {
+    if (!user) return { error: new Error("No user authenticated"), data: null };
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id)
+      .select()
+      .single();
+      
+    if (!error && data) {
+      setProfile(data);
+      return { data, error: null };
+    }
+    
+    return { error, data: null };
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        isLoading,
+        signIn,
+        signUp,
+        signOut,
+        updateProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Hook
+// Hook to use auth context
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
