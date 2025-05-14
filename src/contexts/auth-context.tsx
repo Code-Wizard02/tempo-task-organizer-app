@@ -1,5 +1,4 @@
 
-// If this file exists and we're just updating it to use our new types
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
@@ -94,7 +93,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
     });
     
-    return response;
+    return {
+      error: response.error,
+      data: response.data.session
+    };
   };
 
   // Sign up with email and password
@@ -109,7 +111,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
     
-    return response;
+    return {
+      error: response.error,
+      data: response.data.session
+    };
   };
 
   // Sign out

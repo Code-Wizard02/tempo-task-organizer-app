@@ -8,7 +8,7 @@ import { useTasks } from "@/contexts/task-context";
 import { useAuth } from "@/contexts/auth-context";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { 
     getTotalTasks, 
     getCompletedTasksCount, 
@@ -22,7 +22,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Bienvenido, {user?.name}</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Bienvenido, {profile?.full_name || 'Usuario'}</h2>
         <p className="text-muted-foreground">
           Aquí está el resumen de tus tareas y actividades.
         </p>

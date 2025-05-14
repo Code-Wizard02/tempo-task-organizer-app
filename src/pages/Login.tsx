@@ -12,7 +12,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { login, isLoading } = useAuth();
+  const { signIn, isLoading } = useAuth();
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -38,7 +38,7 @@ export default function Login() {
 
     if (validateForm()) {
       try {
-        await login(email, password);
+        await signIn(email, password);
       } catch (error) {
         console.error("Error al iniciar sesión:", error);
       }
@@ -46,59 +46,57 @@ export default function Login() {
   };
 
   return (
-    <AuthLayout title="Iniciar Sesión">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="tu@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={cn(errors.email && "border-destructive")}
-          />
-          {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-        </div>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Contraseña</Label>
-            <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-              ¿Olvidaste tu contraseña?
-            </Link>
-          </div>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={cn(errors.password && "border-destructive")}
-          />
-          {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-        </div>
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? (
-            <span className="flex items-center justify-center">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2"></span>
-              Iniciando sesión...
-            </span>
-          ) : (
-            "Iniciar Sesión"
-          )}
-        </Button>
-        <div className="text-center text-sm">
-          ¿No tienes una cuenta?{" "}
-          <Link to="/register" className="text-primary hover:underline">
-            Regístrate
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="tu@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={cn(errors.email && "border-destructive")}
+        />
+        {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Contraseña</Label>
+          <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+            ¿Olvidaste tu contraseña?
           </Link>
         </div>
-        
-        <div className="text-center mt-4 text-xs text-muted-foreground">
-          <p>Credenciales de prueba:</p>
-          <p>Email: demo@example.com</p>
-          <p>Contraseña: password123</p>
-        </div>
-      </form>
-    </AuthLayout>
+        <Input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className={cn(errors.password && "border-destructive")}
+        />
+        {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+      </div>
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <span className="flex items-center justify-center">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2"></span>
+            Iniciando sesión...
+          </span>
+        ) : (
+          "Iniciar Sesión"
+        )}
+      </Button>
+      <div className="text-center text-sm">
+        ¿No tienes una cuenta?{" "}
+        <Link to="/register" className="text-primary hover:underline">
+          Regístrate
+        </Link>
+      </div>
+      
+      <div className="text-center mt-4 text-xs text-muted-foreground">
+        <p>Credenciales de prueba:</p>
+        <p>Email: demo@example.com</p>
+        <p>Contraseña: password123</p>
+      </div>
+    </form>
   );
 }

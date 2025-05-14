@@ -15,7 +15,7 @@ export function AppSidebar() {
   const isMobile = useIsMobile();
   // En móviles, iniciar con la barra lateral colapsada
   const [isCollapsed, setIsCollapsed] = useState(isMobile);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   // Actualizar el estado cuando cambie el tamaño de la pantalla
   useEffect(() => {
@@ -61,7 +61,7 @@ export function AppSidebar() {
         <div className={cn("p-4 flex", isCollapsed ? "justify-center" : "justify-between")}>
           {user ? (
             <>
-              {!isCollapsed && <span className="text-sm font-medium truncate">{user.name}</span>}
+              {!isCollapsed && <span className="text-sm font-medium truncate">{profile?.full_name || 'Usuario'}</span>}
               <div className={cn("flex space-x-1 items-center", isCollapsed && "flex-col space-y-2 space-x-0")}>
                 <Button variant="ghost" size="icon">
                   <Bell className="h-5 w-5" />
