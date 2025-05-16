@@ -1,191 +1,156 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Upload } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/hooks/use-toast";
 
 export default function Profile() {
-  const { profile, updateProfile } = useAuth();
+  const { user, profile, updateProfile } = useAuth();
+  
+  const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [bio, setBio] = useState(profile?.bio || "");
-  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Update form when profile changes
-  useEffect(() => {
-    if (profile) {
-      setFullName(profile.full_name || "");
-      setBio(profile.bio || "");
-      setAvatarUrl(profile.avatar_url || "");
-    }
-  }, [profile]);
-
-  // Handle avatar upload
-  const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) return;
+    
+    setIsSubmitting(true);
+    
     try {
-      setUploading(true);
+      // Ensure we're not sending empty values
+      const updatedProfile = {
+        full_name: fullName || profile?.full_name || user.email?.split('@')[0] || "Usuario",
+        bio: bio || "",
+      };
       
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('Debe seleccionar una imagen');
-      }
-
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${profile?.id}/${Math.random().toString(36).slice(2)}.${fileExt}`;
-
-      // Upload file to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      // Get public URL
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      // Update avatar URL in state
-      setAvatarUrl(data.publicUrl);
-
-      // Update profile
-      await updateProfile({ avatar_url: data.publicUrl });
-
+      await updateProfile(updatedProfile);
+      setIsEditing(false);
       toast({
-        title: "Avatar actualizado",
-        description: "Tu foto de perfil ha sido actualizada exitosamente.",
+        title: "Perfil actualizado",
+        description: "Tu información ha sido actualizada correctamente.",
       });
     } catch (error) {
+      console.error("Error updating profile:", error);
       toast({
-        title: "Error al subir imagen",
-        description: error instanceof Error ? error.message : "Ocurrió un error al subir la imagen",
+        title: "Error al actualizar",
+        description: "No se pudo actualizar tu información. Inténtalo de nuevo.",
         variant: "destructive",
       });
     } finally {
-      setUploading(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Handle profile save
-  const handleSaveProfile = async () => {
-    try {
-      setSaving(true);
-      
-      const { error } = await updateProfile({
-        full_name: fullName,
-        bio,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Perfil actualizado",
-        description: "Tu perfil ha sido actualizado exitosamente.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error al actualizar perfil",
-        description: error instanceof Error ? error.message : "Ocurrió un error al actualizar el perfil",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <Card className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto">
+      <Card>
         <CardHeader>
           <CardTitle>Mi Perfil</CardTitle>
           <CardDescription>
-            Actualiza tu información personal y foto de perfil
+            Gestiona tu información personal y preferencias
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Avatar Section */}
-          <div className="flex flex-col items-center space-y-4">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={avatarUrl} alt={fullName} />
-              <AvatarFallback>
-                {fullName.split(' ').map(name => name[0]).join('').toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <label htmlFor="avatar-upload" className="cursor-pointer">
-                <div className="flex items-center space-x-2 bg-primary text-primary-foreground px-4 py-2 rounded-md">
-                  {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  <span>{uploading ? "Subiendo..." : "Cambiar foto de perfil"}</span>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-6">
+              <div className="flex items-center gap-6">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={profile?.avatar_url || ""} alt={profile?.full_name || "Usuario"} />
+                  <AvatarFallback className="text-2xl">
+                    {getInitials(profile?.full_name || "Usuario")}
+                  </AvatarFallback>
+                </Avatar>
+                
+                <div className="space-y-1">
+                  <h3 className="text-xl font-medium">{profile?.full_name || "Usuario"}</h3>
+                  <p className="text-sm text-muted-foreground">{user?.email}</p>
                 </div>
-                <input 
-                  id="avatar-upload" 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={uploadAvatar} 
-                  disabled={uploading}
-                  className="sr-only"
-                />
-              </label>
-            </div>
-          </div>
+              </div>
 
-          {/* Profile Form */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="full-name" className="block text-sm font-medium">
-                Nombre completo
-              </label>
-              <Input
-                id="full-name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Tu nombre completo"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="bio" className="block text-sm font-medium">
-                Biografía
-              </label>
-              <Textarea
-                id="bio"
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder="Cuéntanos un poco sobre ti..."
-                rows={4}
-              />
-            </div>
-
-            <Button 
-              onClick={handleSaveProfile} 
-              disabled={saving}
-              className="w-full"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Guardando...
-                </>
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Nombre completo</Label>
+                    <Input
+                      id="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Tu nombre completo"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Biografía</Label>
+                    <Textarea
+                      id="bio"
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Cuéntanos sobre ti..."
+                      rows={4}
+                    />
+                  </div>
+                </div>
               ) : (
-                "Guardar Cambios"
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium">Nombre completo</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {profile?.full_name || "No especificado"}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium">Biografía</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {profile?.bio || "No especificada"}
+                    </p>
+                  </div>
+                </div>
               )}
-            </Button>
-          </div>
+            </div>
+          </form>
         </CardContent>
+        <CardFooter>
+          {isEditing ? (
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditing(false)}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Guardando..." : "Guardar cambios"}
+              </Button>
+            </div>
+          ) : (
+            <Button type="button" onClick={() => setIsEditing(true)}>
+              Editar perfil
+            </Button>
+          )}
+        </CardFooter>
       </Card>
     </div>
   );
