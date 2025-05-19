@@ -14,6 +14,7 @@ import { useTasks } from "@/contexts/task-context";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { ThemeToggle } from '../theme-toggle';
 
 interface HeaderProps {
   title: string;
@@ -46,6 +47,7 @@ export function Header({ title }: HeaderProps) {
         <h1 className="text-xl font-semibold">{title}</h1>
       </div>
       <div className="flex items-center gap-4">
+        <ThemeToggle/>
         <Popover>
           <PopoverTrigger asChild>
             <Button 

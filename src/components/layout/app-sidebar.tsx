@@ -63,9 +63,6 @@ export function AppSidebar() {
             <>
               {!isCollapsed && <span className="text-sm font-medium truncate">{profile?.full_name || 'Usuario'}</span>}
               <div className={cn("flex space-x-1 items-center", isCollapsed && "flex-col space-y-2 space-x-0")}>
-                <Button variant="ghost" size="icon">
-                  <Bell className="h-5 w-5" />
-                </Button>
                 <ThemeToggle />
               </div>
             </>

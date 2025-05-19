@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import type { Profile } from '@/types/app-types';
+import { error } from 'console';
 
 // Authentication context type
 type AuthContextType = {
@@ -123,10 +124,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       });
+
+      console.log("Sign up response:", response);
       
+      if (response.error) {
+        console.error("Sign up error:", response.error);
+        return {
+          error: response.error,
+          data: null
+        };
+      }
       return {
-        error: response.error,
-        data: response.data?.session || null
+        error: null,
+        data: response.data.session || null,
+        message: "Check your email for the confirmation link."
       };
     } catch (error) {
       console.error("Sign up error:", error);
