@@ -1,604 +1,433 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from "react";
+import { useSubject } from "@/contexts/subject-context";
+import { useProfessor } from "@/contexts/professor-context";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useSubjects } from "@/contexts/subject-context";
-import { useProfessors } from "@/contexts/professor-context";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { 
-  Plus, Pencil, Trash2, UserPlus, Loader2, AlertDialog, 
-  AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
-  AlertDialogTitle, AlertDialogTrigger, 
-  Search, ArrowUpDown, ChevronDown
-} from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Search, Plus, Edit, Trash, ArrowUpDown } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useAuth } from "@/contexts/auth-context";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 
-const subjectSchema = z.object({
-  name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres" }),
-  color: z.string().min(4, { message: "Debe seleccionar un color" }),
-  professorId: z.string().optional(),
-});
+interface Subject {
+  id: number;
+  name: string;
+  credits: number;
+  professor_id: number | null;
+  created_at?: string;
+}
 
-type SubjectFormValues = z.infer<typeof subjectSchema>;
+interface Professor {
+  id: number;
+  full_name: string;
+}
 
-const professorSchema = z.object({
-  name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres" }),
-  email: z.string().email({ message: "Correo electrónico inválido" }),
-});
-
-type ProfessorFormValues = z.infer<typeof professorSchema>;
-
-const predefinedColors = [
-  { name: "Azul", value: "#4f46e5" },
-  { name: "Verde", value: "#10b981" },
-  { name: "Rojo", value: "#ef4444" },
-  { name: "Naranja", value: "#f97316" },
-  { name: "Amarillo", value: "#eab308" },
-  { name: "Morado", value: "#8b5cf6" },
-  { name: "Rosa", value: "#ec4899" },
-  { name: "Celeste", value: "#0891b2" },
-];
-
-export default function Subjects() {
-  const { subjects, isLoading: isLoadingSubjects, addSubject, updateSubject, deleteSubject } = useSubjects();
-  const { professors, isLoading: isLoadingProfessors, addProfessor, getProfessorsBySubject } = useProfessors();
+const Subjects = () => {
+  const { subjects, fetchSubjects, createSubject, updateSubject, deleteSubject } = useSubject();
+  const { professors, fetchProfessors } = useProfessor();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "ascending" as "ascending" | "descending" });
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [subjectData, setSubjectData] = useState({
+    name: "",
+    credits: 0,
+    professor_id: null as number | null,
+  });
   const { toast } = useToast();
-  const { user } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isProfessorDialogOpen, setIsProfessorDialogOpen] = useState(false);
-  const [editingSubject, setEditingSubject] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState("#4f46e5");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [subjectToDelete, setSubjectToDelete] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [isLoading, setIsLoading] = useState(false);
+  const createDialogRef = useRef<HTMLDialogElement>(null);
+  const editDialogRef = useRef<HTMLDialogElement>(null);
 
-  const subjectForm = useForm<SubjectFormValues>({
-    resolver: zodResolver(subjectSchema),
-    defaultValues: {
-      name: "",
-      color: "#4f46e5",
-      professorId: "",
-    },
-  });
+  useEffect(() => {
+    setIsLoading(true);
+    Promise.all([fetchSubjects(), fetchProfessors()])
+      .finally(() => setIsLoading(false));
+  }, [fetchSubjects, fetchProfessors]);
 
-  const professorForm = useForm<ProfessorFormValues>({
-    resolver: zodResolver(professorSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-    },
-  });
-
-  const openCreateDialog = () => {
-    subjectForm.reset({ name: "", color: "#4f46e5", professorId: "" });
-    setSelectedColor("#4f46e5");
-    setEditingSubject(null);
-    setIsDialogOpen(true);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
   };
 
-  const openEditDialog = (id: string) => {
-    const subject = subjects.find(s => s.id === id);
-    if (subject) {
-      const subjectProfessors = getProfessorsBySubject(subject.id);
-      const professorId = subjectProfessors.length > 0 ? subjectProfessors[0].id : "";
-      
-      subjectForm.reset({
-        name: subject.name,
-        color: subject.color,
-        professorId: professorId,
-      });
-      setSelectedColor(subject.color);
-      setEditingSubject(id);
-      setIsDialogOpen(true);
-    }
+  const handleCreateDialogOpen = () => {
+    setSubjectData({ name: "", credits: 0, professor_id: null });
+    setIsCreateDialogOpen(true);
   };
 
-  const prepareDeleteSubject = (id: string) => {
-    setSubjectToDelete(id);
-    setDeleteConfirmOpen(true);
+  const handleEditDialogOpen = (subject: Subject) => {
+    setSelectedSubject(subject);
+    setSubjectData({
+      name: subject.name,
+      credits: subject.credits,
+      professor_id: subject.professor_id,
+    });
+    setIsEditDialogOpen(true);
   };
 
-  const handleDeleteSubject = async () => {
-    if (subjectToDelete) {
-      await deleteSubject(subjectToDelete);
-      setDeleteConfirmOpen(false);
-      setSubjectToDelete(null);
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSubjectData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const onSubmitSubject = async (data: SubjectFormValues) => {
-    setIsSubmitting(true);
+  const handleSelectChange = (value: string) => {
+    setSubjectData(prev => ({
+      ...prev,
+      professor_id: value === "null" ? null : parseInt(value, 10),
+    }));
+  };
+
+  const handleCreateSubject = async () => {
     try {
-      if (editingSubject) {
-        await updateSubject(editingSubject, {
-          name: data.name,
-          color: data.color
+      if (!subjectData.name || !subjectData.credits) {
+        toast({
+          title: "Error",
+          description: "Por favor, complete todos los campos.",
+          variant: "destructive",
         });
-        
-        // Si se seleccionó un profesor, asignar la materia
-        if (data.professorId) {
-          // La lógica para asignar profesor a materia se manejará en una función separada
-          // que será llamada después de añadir la materia
-        }
-      } else {
-        // Ensure all required fields are present when adding a new subject
-        const newSubject = {
-          name: data.name,
-          color: data.color
-        };
-        
-        const result = await addSubject(newSubject);
-        
-        // Si se seleccionó un profesor y se creó la materia correctamente, asignar
-        if (data.professorId && result?.id) {
-          // La asignación se maneja en otro contexto
-        }
+        return;
       }
-      setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Error al guardar la materia:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const onSubmitProfessor = async (data: ProfessorFormValues) => {
-    setIsSubmitting(true);
-    try {
-      // Add the new professor
-      const newProfessorData = {
-        name: data.name,
-        email: data.email,
-        subjectIds: [] // Inicialmente sin materias asignadas
-      };
-      
-      await addProfessor(newProfessorData);
-      setIsProfessorDialogOpen(false);
-      professorForm.reset({ name: "", email: "" });
-      
+      await createSubject(subjectData);
       toast({
-        title: "Profesor creado",
-        description: "El profesor ha sido añadido correctamente",
-        duration: 3000,
+        title: "Éxito",
+        description: "Materia creada correctamente.",
       });
+      setIsCreateDialogOpen(false);
+      setSubjectData({ name: "", credits: 0, professor_id: null });
     } catch (error) {
-      console.error("Error al guardar el profesor:", error);
+      console.error("Error al crear la materia:", error);
       toast({
         title: "Error",
-        description: "No se pudo guardar el profesor",
+        description: "No se pudo crear la materia.",
         variant: "destructive",
-        duration: 3000,
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const handleColorSelect = (color: string) => {
-    setSelectedColor(color);
-    subjectForm.setValue("color", color);
-  };
-
-  // Función para ordenar las materias
-  const sortSubjects = (a: any, b: any, column: string) => {
-    if (!column) return 0;
-    
-    const aValue = a[column];
-    const bValue = b[column];
-    
-    if (sortDirection === 'asc') {
-      return aValue.localeCompare(bValue);
-    } else {
-      return bValue.localeCompare(aValue);
+  const handleUpdateSubject = async () => {
+    if (!selectedSubject) return;
+    try {
+      if (!subjectData.name || !subjectData.credits) {
+        toast({
+          title: "Error",
+          description: "Por favor, complete todos los campos.",
+          variant: "destructive",
+        });
+        return;
+      }
+      await updateSubject(selectedSubject.id, subjectData);
+      toast({
+        title: "Éxito",
+        description: "Materia actualizada correctamente.",
+      });
+      setIsEditDialogOpen(false);
+      setSelectedSubject(null);
+      setSubjectData({ name: "", credits: 0, professor_id: null });
+    } catch (error) {
+      console.error("Error al actualizar la materia:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la materia.",
+        variant: "destructive",
+      });
     }
   };
 
-  // Función para manejar el clic en una columna para ordenar
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
+  const handleDeleteSubject = async (subjectId: number) => {
+    try {
+      await deleteSubject(subjectId);
+      toast({
+        title: "Éxito",
+        description: "Materia eliminada correctamente.",
+      });
+    } catch (error) {
+      console.error("Error al eliminar la materia:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la materia.",
+        variant: "destructive",
+      });
     }
   };
 
-  // Filtrar y ordenar las materias
-  const filteredSubjects = subjects
-    .filter(subject => subject.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    .sort((a, b) => sortColumn ? sortSubjects(a, b, sortColumn) : 0);
+  const sortedSubjects = React.useMemo(() => {
+    let sortableItems = [...subjects];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a: any, b: any) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === "ascending" ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === "ascending" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [subjects, sortConfig]);
 
-  // Verificar si el usuario está autenticado
-  if (!user) {
-    return (
-      <div className="container mx-auto py-6 text-center">
-        <h1 className="text-2xl font-bold mb-4">Acceso Denegado</h1>
-        <p className="mb-4">Debes iniciar sesión para ver esta página.</p>
-        <Button onClick={() => window.location.href = "/login"}>
-          Iniciar Sesión
-        </Button>
-      </div>
-    );
-  }
+  const requestSort = (key: string) => {
+    let direction: "ascending" | "descending" = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  };
 
-  // Mostrar estado de carga
-  if (isLoadingSubjects || isLoadingProfessors) {
-    return (
-      <div className="container mx-auto py-6 text-center">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-        <p>Cargando materias...</p>
-      </div>
-    );
-  }
+  const filteredSubjects = sortedSubjects.filter(subject =>
+    subject.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold">Materias</h1>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar materias..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Button onClick={openCreateDialog} disabled={isSubmitting}>
-            <Plus className="mr-2 h-4 w-4" /> Agregar Materia
-          </Button>
-        </div>
-      </div>
-      
+    <div className="container mx-auto py-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Lista de Materias</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle>Materias</CardTitle>
+          <div className="flex items-center space-x-2">
+            <Input
+              type="text"
+              placeholder="Buscar materia..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="max-w-md"
+            />
+            <Button variant="outline" size="icon">
+              <Search className="h-4 w-4" />
+            </Button>
+            <Button onClick={handleCreateDialogOpen}>
+              <Plus className="mr-2 h-4 w-4" />
+              Agregar Materia
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          {filteredSubjects.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">
-                {searchTerm ? "No se encontraron materias con ese término de búsqueda" : "No hay materias registradas"}
-              </p>
+          {isLoading ? (
+            <div className="flex items-center justify-center">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Cargando materias...
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('name')}
-                        className="flex items-center p-0 h-auto font-semibold"
-                      >
-                        Nombre
-                        {sortColumn === 'name' && (
-                          <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'desc' ? 'rotate-180' : ''}`} />
-                        )}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('color')}
-                        className="flex items-center p-0 h-auto font-semibold"
-                      >
-                        Color
-                        {sortColumn === 'color' && (
-                          <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'desc' ? 'rotate-180' : ''}`} />
-                        )}
-                      </Button>
-                    </TableHead>
-                    <TableHead>Profesores</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSubjects.map((subject) => {
-                    const subjectProfessors = getProfessorsBySubject(subject.id);
-                    return (
-                      <TableRow key={subject.id}>
-                        <TableCell className="font-medium">{subject.name}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <div 
-                              className="w-6 h-6 rounded-full mr-2" 
-                              style={{ backgroundColor: subject.color }}
-                            />
-                            <span>{subject.color}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {subjectProfessors.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {subjectProfessors.map(prof => (
-                                <span key={prof.id} className="inline-block px-2 py-1 bg-secondary rounded-md text-xs">
-                                  {prof.name}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">Sin profesores asignados</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => openEditDialog(subject.id)}
-                            disabled={isSubmitting}
-                          >
-                            <Pencil className="h-4 w-4" />
+            <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
+              <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort("name")}>
+                      Nombre
+                      <ArrowUpDown className="inline-block w-3 h-3 ml-1" />
+                    </th>
+                    <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort("credits")}>
+                      Créditos
+                      <ArrowUpDown className="inline-block w-3 h-3 ml-1" />
+                    </th>
+                    <th scope="col" className="px-6 py-3">
+                      Profesor
+                    </th>
+                    <th scope="col" className="px-6 py-3">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSubjects.map(subject => (
+                    <tr key={subject.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                      <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        {subject.name}
+                      </th>
+                      <td className="px-6 py-4">
+                        {subject.credits}
+                      </td>
+                      <td className="px-6 py-4">
+                        {professors.find(professor => professor.id === subject.professor_id)?.full_name || "Sin profesor"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex space-x-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditDialogOpen(subject)}>
+                            <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => prepareDeleteSubject(subject.id)}
-                            disabled={isSubmitting}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acción eliminará la materia permanentemente. ¿Deseas continuar?
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteSubject(subject.id)}>Eliminar</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Diálogo de confirmación para eliminar materia */}
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogTitle>Crear Materia</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que deseas eliminar esta materia? Esta acción no se puede deshacer.
+              Añade una nueva materia al sistema.
             </DialogDescription>
           </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nombre
+              </Label>
+              <Input
+                type="text"
+                id="name"
+                name="name"
+                value={subjectData.name}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="credits" className="text-right">
+                Créditos
+              </Label>
+              <Input
+                type="number"
+                id="credits"
+                name="credits"
+                value={subjectData.credits.toString()}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="professor" className="text-right">
+                Profesor
+              </Label>
+              <Select onValueChange={handleSelectChange}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecciona un profesor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="null">Sin profesor</SelectItem>
+                  {professors.map(professor => (
+                    <SelectItem key={professor.id} value={professor.id.toString()}>
+                      {professor.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+            <Button type="button" variant="secondary" onClick={() => setIsCreateDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDeleteSubject} disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Eliminando...
-                </>
-              ) : (
-                'Eliminar'
-              )}
+            <Button type="button" onClick={handleCreateSubject}>
+              Crear
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Subject Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{editingSubject ? 'Editar Materia' : 'Agregar Materia'}</DialogTitle>
+            <DialogTitle>Editar Materia</DialogTitle>
             <DialogDescription>
-              Complete los datos de la materia.
+              Edita los detalles de la materia.
             </DialogDescription>
           </DialogHeader>
-          <Form {...subjectForm}>
-            <form onSubmit={subjectForm.handleSubmit(onSubmitSubject)} className="space-y-4">
-              <FormField
-                control={subjectForm.control}
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nombre
+              </Label>
+              <Input
+                type="text"
+                id="name"
                 name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nombre de la materia" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                value={subjectData.name}
+                onChange={handleInputChange}
+                className="col-span-3"
               />
-
-              <FormField
-                control={subjectForm.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Color</FormLabel>
-                    <FormControl>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal"
-                            style={{ borderLeftWidth: '8px', borderLeftColor: selectedColor }}
-                          >
-                            <div 
-                              className="w-4 h-4 rounded-full mr-2" 
-                              style={{ backgroundColor: selectedColor }}
-                            />
-                            {selectedColor}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64">
-                          <div className="grid grid-cols-4 gap-2">
-                            {predefinedColors.map((color) => (
-                              <button
-                                key={color.value}
-                                type="button"
-                                className={`w-10 h-10 rounded-full border-2 ${selectedColor === color.value ? 'border-black dark:border-white' : 'border-transparent'}`}
-                                style={{ backgroundColor: color.value }}
-                                onClick={() => handleColorSelect(color.value)}
-                                title={color.name}
-                              />
-                            ))}
-                          </div>
-                          <Input
-                            type="color"
-                            value={selectedColor}
-                            onChange={(e) => handleColorSelect(e.target.value)}
-                            className="mt-2 w-full h-8"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="credits" className="text-right">
+                Créditos
+              </Label>
+              <Input
+                type="number"
+                id="credits"
+                name="credits"
+                value={subjectData.credits.toString()}
+                onChange={handleInputChange}
+                className="col-span-3"
               />
-
-              <FormField
-                control={subjectForm.control}
-                name="professorId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profesor Asignado (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar profesor (opcional)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {professors.map((professor) => (
-                          <SelectItem key={professor.id} value={professor.id}>
-                            {professor.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex flex-col space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="text-sm font-medium">Profesores disponibles</h4>
-                    <p className="text-xs text-muted-foreground">
-                      {professors.length === 0 
-                        ? "No hay profesores registrados" 
-                        : `${professors.length} profesor(es) disponible(s)`}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsProfessorDialogOpen(true)}
-                    disabled={isSubmitting}
-                  >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Nuevo Profesor
-                  </Button>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Guardando...
-                    </>
-                  ) : editingSubject ? (
-                    'Guardar Cambios'
-                  ) : (
-                    'Agregar Materia'
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Quick Professor Dialog */}
-      <Dialog open={isProfessorDialogOpen} onOpenChange={setIsProfessorDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Agregar Profesor Rápido</DialogTitle>
-            <DialogDescription>
-              Agregar un profesor para asociarlo a la materia.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...professorForm}>
-            <form onSubmit={professorForm.handleSubmit(onSubmitProfessor)} className="space-y-4">
-              <FormField
-                control={professorForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nombre del profesor" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={professorForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Correo Electrónico</FormLabel>
-                    <FormControl>
-                      <Input placeholder="correo@ejemplo.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Guardando...
-                    </>
-                  ) : (
-                    'Agregar Profesor'
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="professor" className="text-right">
+                Profesor
+              </Label>
+              <Select onValueChange={handleSelectChange}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecciona un profesor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="null">Sin profesor</SelectItem>
+                  {professors.map(professor => (
+                    <SelectItem key={professor.id} value={professor.id.toString()}>
+                      {professor.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleUpdateSubject}>
+              Guardar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
-}
+};
+
+export default Subjects;
