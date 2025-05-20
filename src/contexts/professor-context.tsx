@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -76,6 +76,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = await supabase
           .from('professors')
           .select('*')
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -146,6 +147,9 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
           for (const subjectId of professor.subjectIds) {
             await assignSubjectToProfessor(newProfessor.id, subjectId);
           }
+          
+          // Actualizar los subjectIds en el objeto del profesor
+          newProfessor.subjectIds = [...professor.subjectIds];
         }
         
         setProfessors([newProfessor, ...professors]);
@@ -268,7 +272,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
 
   // Asignar materia a profesor
   const assignSubjectToProfessor = async (professorId: string, subjectId: string) => {
-    if (!user) return;
+    if (!user || !subjectId) return;
     
     try {
       const { error } = await supabase
@@ -350,6 +354,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
 
   // Obtener profesores por materia
   const getProfessorsBySubject = (subjectId: string) => {
+    if (!subjectId) return [];
     return professors.filter(professor => professor.subjectIds.includes(subjectId));
   };
 

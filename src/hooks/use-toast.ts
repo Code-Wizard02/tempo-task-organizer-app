@@ -7,13 +7,14 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 5
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 3000 // Cambiado de 1000000 a 3000 (3 segundos)
 
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  duration?: number // Nuevo campo para controlar duración
 }
 
 const actionTypes = {
@@ -127,6 +128,14 @@ type Toast = Omit<ToasterToast, "id">
 function toast({ ...props }: Toast) {
   const id = genId()
 
+  // Programar el cierre automático del toast después del tiempo especificado
+  const duration = props.duration || TOAST_REMOVE_DELAY; // Usa duración personalizada o valor por defecto
+  if (duration) {
+    setTimeout(() => {
+      dismiss(id);
+    }, duration);
+  }
+
   const update = (props: ToasterToast) =>
     dispatch({
       type: actionTypes.UPDATE_TOAST,
@@ -164,7 +173,7 @@ function addToRemoveQueue(toastId: string) {
       type: actionTypes.REMOVE_TOAST,
       toastId: toastId,
     })
-  }, TOAST_REMOVE_DELAY)
+  }, 100) // Cambiado para que se elimine más rápido después de cerrarse
 
   toastTimeouts.set(toastId, timeout)
 }

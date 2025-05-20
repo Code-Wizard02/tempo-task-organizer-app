@@ -16,23 +16,20 @@ export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean>(false)
 
   React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    
-    const onChange = () => {
+    const checkMobile = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     }
     
     // Ejecutar también al inicio
-    onChange()
+    checkMobile()
     
-    // Registrar el event listener
-    mql.addEventListener("change", onChange)
+    // Registrar el event listener para window resize
+    window.addEventListener("resize", checkMobile)
     
     // Limpiar al desmontar
-    return () => mql.removeEventListener("change", onChange)
+    return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
-  // Si no se ha determinado aún, asumimos que no es móvil
   return isMobile
 }
 

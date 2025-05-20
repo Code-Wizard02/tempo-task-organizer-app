@@ -2,15 +2,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
+import { supabase } from '@/integrations/supabase/client';
 
 // Tipos
-export type WeekDay = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-
 export type ScheduleEntry = {
   id: string;
   subjectId: string;
   professorId: string;
-  day: WeekDay;
+  dayOfWeek: number; // 0 = Domingo, 1 = Lunes, etc.
   startTime: string;
   endTime: string;
   location: string;
@@ -18,51 +17,19 @@ export type ScheduleEntry = {
   updatedAt: string;
 };
 
+export const dayNames = [
+  "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"
+];
+
 type ScheduleContextType = {
   scheduleEntries: ScheduleEntry[];
-  addScheduleEntry: (entry: Omit<ScheduleEntry, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateScheduleEntry: (id: string, entry: Partial<ScheduleEntry>) => void;
-  deleteScheduleEntry: (id: string) => void;
-  getEntriesByDay: (day: WeekDay) => ScheduleEntry[];
-  getEntriesBySubject: (subjectId: string) => ScheduleEntry[];
+  isLoading: boolean;
+  addScheduleEntry: (entry: Omit<ScheduleEntry, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateScheduleEntry: (id: string, entry: Partial<ScheduleEntry>) => Promise<void>;
+  deleteScheduleEntry: (id: string) => Promise<void>;
+  getScheduleEntriesByDay: (day: number) => ScheduleEntry[];
+  getScheduleEntryById: (id: string) => ScheduleEntry | undefined;
 };
-
-// Mock de entradas de horario iniciales
-const initialScheduleEntries: ScheduleEntry[] = [
-  {
-    id: '1',
-    subjectId: '1',
-    professorId: '1',
-    day: 'monday',
-    startTime: '08:00',
-    endTime: '10:00',
-    location: 'Aula 101',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    subjectId: '2',
-    professorId: '2',
-    day: 'wednesday',
-    startTime: '10:00',
-    endTime: '12:00',
-    location: 'Laboratorio 3',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    subjectId: '3',
-    professorId: '3',
-    day: 'friday',
-    startTime: '14:00',
-    endTime: '16:00',
-    location: 'Aula 205',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
 
 // Crear contexto
 const ScheduleContext = createContext<ScheduleContextType | undefined>(undefined);
@@ -70,94 +37,218 @@ const ScheduleContext = createContext<ScheduleContextType | undefined>(undefined
 // Provider
 export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Cargar horario al iniciar
+  // Cargar horario desde Supabase
   useEffect(() => {
-    if (user) {
-      const storedSchedule = localStorage.getItem(`schedule-${user.id}`);
-      if (storedSchedule) {
-        setScheduleEntries(JSON.parse(storedSchedule));
-      } else {
-        setScheduleEntries(initialScheduleEntries);
-        localStorage.setItem(`schedule-${user.id}`, JSON.stringify(initialScheduleEntries));
+    async function loadSchedule() {
+      if (!user) {
+        setScheduleEntries([]);
+        setIsLoading(false);
+        return;
       }
-    } else {
-      setScheduleEntries([]);
-    }
-  }, [user]);
 
-  // Guardar horario cuando cambie
-  useEffect(() => {
-    if (user && scheduleEntries.length > 0) {
-      localStorage.setItem(`schedule-${user.id}`, JSON.stringify(scheduleEntries));
-    }
-  }, [scheduleEntries, user]);
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('schedule')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('day_of_week', { ascending: true })
+          .order('start_time', { ascending: true });
 
-  // Añadir entrada al horario
-  const addScheduleEntry = (entry: Omit<ScheduleEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const now = new Date().toISOString();
-    const newEntry: ScheduleEntry = {
-      ...entry,
-      id: Date.now().toString(),
-      createdAt: now,
-      updatedAt: now,
-    };
+        if (error) {
+          throw error;
+        }
+
+        const formattedEntries: ScheduleEntry[] = data.map((item) => ({
+          id: item.id,
+          subjectId: item.subject_id || '',
+          professorId: item.professor_id || '',
+          dayOfWeek: item.day_of_week,
+          startTime: item.start_time,
+          endTime: item.end_time,
+          location: item.location || '',
+          createdAt: item.created_at,
+          updatedAt: item.updated_at
+        }));
+
+        setScheduleEntries(formattedEntries);
+      } catch (error) {
+        console.error('Error al cargar horario:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo cargar el horario",
+          variant: "destructive",
+          duration: 3000,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadSchedule();
+  }, [user, toast]);
+
+  // Añadir entrada de horario
+  const addScheduleEntry = async (entry: Omit<ScheduleEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!user) return;
     
-    setScheduleEntries([...scheduleEntries, newEntry]);
-    toast({
-      title: "Horario actualizado",
-      description: "Se ha añadido una nueva clase al horario.",
-    });
+    try {
+      const { data, error } = await supabase
+        .from('schedule')
+        .insert([
+          {
+            subject_id: entry.subjectId,
+            professor_id: entry.professorId,
+            day_of_week: entry.dayOfWeek,
+            start_time: entry.startTime,
+            end_time: entry.endTime,
+            location: entry.location,
+            user_id: user.id
+          }
+        ])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data[0]) {
+        const newEntry: ScheduleEntry = {
+          id: data[0].id,
+          subjectId: data[0].subject_id || '',
+          professorId: data[0].professor_id || '',
+          dayOfWeek: data[0].day_of_week,
+          startTime: data[0].start_time,
+          endTime: data[0].end_time,
+          location: data[0].location || '',
+          createdAt: data[0].created_at,
+          updatedAt: data[0].updated_at
+        };
+        
+        setScheduleEntries([...scheduleEntries, newEntry]);
+        
+        toast({
+          title: "Horario actualizado",
+          description: `Se ha añadido una nueva clase de ${dayNames[entry.dayOfWeek]} a las ${entry.startTime}`,
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error al crear entrada de horario:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo agregar la entrada al horario",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
   };
 
-  // Actualizar entrada del horario
-  const updateScheduleEntry = (id: string, updatedFields: Partial<ScheduleEntry>) => {
-    setScheduleEntries(entries => entries.map(entry => 
-      entry.id === id ? { 
-        ...entry, 
-        ...updatedFields, 
-        updatedAt: new Date().toISOString() 
-      } : entry
-    ));
+  // Actualizar entrada de horario
+  const updateScheduleEntry = async (id: string, updatedFields: Partial<ScheduleEntry>) => {
+    if (!user) return;
     
-    toast({
-      title: "Horario actualizado",
-      description: "La clase ha sido actualizada correctamente.",
-    });
+    try {
+      const updateData: any = {};
+      if (updatedFields.subjectId !== undefined) updateData.subject_id = updatedFields.subjectId;
+      if (updatedFields.professorId !== undefined) updateData.professor_id = updatedFields.professorId;
+      if (updatedFields.dayOfWeek !== undefined) updateData.day_of_week = updatedFields.dayOfWeek;
+      if (updatedFields.startTime !== undefined) updateData.start_time = updatedFields.startTime;
+      if (updatedFields.endTime !== undefined) updateData.end_time = updatedFields.endTime;
+      if (updatedFields.location !== undefined) updateData.location = updatedFields.location;
+
+      const { error } = await supabase
+        .from('schedule')
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setScheduleEntries(scheduleEntries.map(entry => 
+        entry.id === id ? { 
+          ...entry, 
+          ...updatedFields,
+          updatedAt: new Date().toISOString()
+        } : entry
+      ));
+      
+      toast({
+        title: "Horario actualizado",
+        description: "La entrada del horario ha sido actualizada exitosamente.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error al actualizar entrada de horario:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la entrada del horario",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
   };
 
-  // Eliminar entrada del horario
-  const deleteScheduleEntry = (id: string) => {
-    setScheduleEntries(entries => entries.filter(entry => entry.id !== id));
+  // Eliminar entrada de horario
+  const deleteScheduleEntry = async (id: string) => {
+    if (!user) return;
     
-    toast({
-      title: "Horario actualizado",
-      description: "La clase ha sido eliminada del horario.",
-    });
+    try {
+      const { error } = await supabase
+        .from('schedule')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setScheduleEntries(scheduleEntries.filter(entry => entry.id !== id));
+      
+      toast({
+        title: "Entrada eliminada",
+        description: "La entrada del horario ha sido eliminada.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error al eliminar entrada de horario:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la entrada del horario",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
   };
 
   // Obtener entradas por día
-  const getEntriesByDay = (day: WeekDay) => {
-    return scheduleEntries.filter(entry => entry.day === day)
+  const getScheduleEntriesByDay = (day: number) => {
+    return scheduleEntries.filter(entry => entry.dayOfWeek === day)
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   };
 
-  // Obtener entradas por materia
-  const getEntriesBySubject = (subjectId: string) => {
-    return scheduleEntries.filter(entry => entry.subjectId === subjectId);
+  // Obtener entrada por ID
+  const getScheduleEntryById = (id: string) => {
+    return scheduleEntries.find(entry => entry.id === id);
   };
 
   return (
     <ScheduleContext.Provider 
       value={{ 
         scheduleEntries, 
+        isLoading,
         addScheduleEntry, 
         updateScheduleEntry, 
         deleteScheduleEntry,
-        getEntriesByDay,
-        getEntriesBySubject
+        getScheduleEntriesByDay,
+        getScheduleEntryById
       }}
     >
       {children}

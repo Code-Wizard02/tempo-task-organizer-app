@@ -7,7 +7,9 @@ import {
   Pencil, 
   Trash,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +26,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +43,8 @@ import { useTasks, Task, TaskDifficulty } from "@/contexts/task-context";
 import { useSubjects } from "@/contexts/subject-context";
 import { useProfessors } from "@/contexts/professor-context";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
 
 export default function Tasks() {
   const { tasks, addTask, updateTask, deleteTask, toggleTaskStatus } = useTasks();
@@ -60,7 +63,8 @@ export default function Tasks() {
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
-    dueDate: "",
+    dueDate: format(new Date(), "yyyy-MM-dd"),
+    dueTime: "23:59",
     difficulty: "medium" as TaskDifficulty,
     subjectId: "",
     professorId: "",
@@ -90,6 +94,7 @@ export default function Tasks() {
       title: newTask.title,
       description: newTask.description,
       dueDate: newTask.dueDate,
+      dueTime: newTask.dueTime,
       difficulty: newTask.difficulty,
       subjectId: newTask.subjectId,
       professorId: newTask.professorId,
@@ -105,6 +110,7 @@ export default function Tasks() {
         title: currentTask.title,
         description: currentTask.description,
         dueDate: currentTask.dueDate,
+        dueTime: currentTask.dueTime,
         difficulty: currentTask.difficulty,
         subjectId: currentTask.subjectId,
         professorId: currentTask.professorId,
@@ -126,7 +132,8 @@ export default function Tasks() {
     setNewTask({
       title: "",
       description: "",
-      dueDate: "",
+      dueDate: format(new Date(), "yyyy-MM-dd"),
+      dueTime: "23:59",
       difficulty: "medium",
       subjectId: "",
       professorId: "",
@@ -142,6 +149,52 @@ export default function Tasks() {
   const openDeleteDialog = (task: Task) => {
     setCurrentTask(task);
     setIsDeleteDialogOpen(true);
+  };
+
+  // Actualización inteligente de profesorId basado en subjectId
+  const handleSubjectChange = (subjectId: string, isNew = false) => {
+    // Buscar profesores asignados a esta materia
+    const subjectProfessors = professors.filter(p => p.subjectIds.includes(subjectId));
+    
+    if (isNew) {
+      // Para nueva tarea
+      if (subjectProfessors.length === 1) {
+        // Si hay un solo profesor, asignarlo automáticamente
+        setNewTask({
+          ...newTask,
+          subjectId,
+          professorId: subjectProfessors[0].id
+        });
+      } else {
+        // Si hay múltiples o ninguno, solo actualizar subjectId
+        setNewTask({
+          ...newTask,
+          subjectId,
+          professorId: "" // Limpiar la selección de profesor
+        });
+      }
+    } else {
+      // Para tarea existente
+      if (currentTask && subjectProfessors.length === 1) {
+        setCurrentTask({
+          ...currentTask,
+          subjectId,
+          professorId: subjectProfessors[0].id
+        });
+      } else if (currentTask) {
+        setCurrentTask({
+          ...currentTask,
+          subjectId,
+          professorId: "" // Limpiar la selección de profesor
+        });
+      }
+    }
+  };
+
+  // Filtrar profesores basados en la materia seleccionada
+  const getFilteredProfessors = (subjectId: string) => {
+    if (!subjectId) return professors;
+    return professors.filter(p => p.subjectIds.includes(subjectId));
   };
 
   const getDifficultyBadge = (difficulty: TaskDifficulty) => {
@@ -172,8 +225,24 @@ export default function Tasks() {
     );
   };
 
-  const isTaskOverdue = (dueDate: string, completed: boolean) => {
-    return !completed && new Date(dueDate) < new Date();
+  const isTaskOverdue = (dueDate: string, dueTime: string | undefined, completed: boolean) => {
+    if (!dueDate) return false;
+    if (completed) return false;
+    
+    const dueDateObj = new Date(`${dueDate}T${dueTime || '23:59'}`);
+    return dueDateObj < new Date();
+  };
+
+  const formatDateTime = (date: string, time?: string) => {
+    if (!date) return "";
+    
+    try {
+      const dateObj = new Date(`${date}T${time || '00:00'}`);
+      return `${dateObj.toLocaleDateString()} ${time || ''}`;
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return `${date} ${time || ''}`;
+    }
   };
 
   return (
@@ -248,63 +317,71 @@ export default function Tasks() {
                   </p>
                 </div>
               ) : (
-                <div className="divide-y">
-                  {filteredTasks.map((task) => {
-                    const subject = subjects.find(s => s.id === task.subjectId);
-                    const isOverdue = isTaskOverdue(task.dueDate, task.completed);
-                    
-                    return (
-                      <div
-                        key={task.id}
-                        className={cn(
-                          "flex items-center p-4 hover:bg-muted/50",
-                          task.completed && "bg-muted/30"
-                        )}
-                      >
-                        <div className="flex items-center gap-2 flex-1">
-                          <Checkbox
-                            checked={task.completed}
-                            onCheckedChange={() => toggleTaskStatus(task.id)}
-                          />
-                          <div className={cn(task.completed && "text-muted-foreground line-through")}>
-                            <div className="font-medium">{task.title}</div>
-                            <div className="text-sm text-muted-foreground truncate max-w-[300px]">
-                              {task.description}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="hidden md:flex items-center gap-2 ml-4">
-                          {getDifficultyBadge(task.difficulty)}
-                        </div>
-                        <div className="hidden md:flex items-center gap-2 ml-4">
-                          <Badge variant="outline">
-                            {subject?.name || "Sin materia"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 ml-4">
-                          <div className="flex items-center">
-                            {getStatusIcon(task.completed)}
-                            <div className="ml-2 text-sm">
-                              <div className={cn("whitespace-nowrap", 
-                                isOverdue && "text-destructive font-medium")}>
-                                {isOverdue && <AlertCircle className="w-3 h-3 inline-block mr-1" />}
-                                {new Date(task.dueDate).toLocaleDateString()}
+                <ScrollArea className="w-full overflow-auto">
+                  <div className="divide-y min-w-[800px]">
+                    {filteredTasks.map((task) => {
+                      const subject = subjects.find(s => s.id === task.subjectId);
+                      const professor = professors.find(p => p.id === task.professorId);
+                      const isOverdue = isTaskOverdue(task.dueDate, task.dueTime, task.completed);
+                      
+                      return (
+                        <div
+                          key={task.id}
+                          className={cn(
+                            "flex items-center p-4 hover:bg-muted/50",
+                            task.completed && "bg-muted/30"
+                          )}
+                        >
+                          <div className="flex items-center gap-2 flex-1">
+                            <Checkbox
+                              checked={task.completed}
+                              onCheckedChange={() => toggleTaskStatus(task.id)}
+                            />
+                            <div className={cn(task.completed && "text-muted-foreground line-through")}>
+                              <div className="font-medium">{task.title}</div>
+                              <div className="text-sm text-muted-foreground truncate max-w-[300px]">
+                                {task.description}
                               </div>
                             </div>
                           </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            {getDifficultyBadge(task.difficulty)}
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Badge variant="outline">
+                              {subject?.name || "Sin materia"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Badge variant="outline" className="bg-secondary/50">
+                              {professor?.name || "Sin profesor"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <div className="flex items-center">
+                              {getStatusIcon(task.completed)}
+                              <div className="ml-2 text-sm">
+                                <div className={cn("whitespace-nowrap", 
+                                  isOverdue && "text-destructive font-medium")}>
+                                  {isOverdue && <AlertCircle className="w-3 h-3 inline-block mr-1" />}
+                                  {formatDateTime(task.dueDate, task.dueTime)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center ml-4 gap-2">
+                            <Button size="icon" variant="ghost" onClick={() => openEditDialog(task)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => openDeleteDialog(task)}>
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center ml-4 gap-2">
-                          <Button size="icon" variant="ghost" onClick={() => openEditDialog(task)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => openDeleteDialog(task)}>
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
               )}
             </div>
           </div>
@@ -340,13 +417,28 @@ export default function Tasks() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="dueDate">Fecha límite</Label>
+                <div className="relative">
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                    className="pr-10"
+                  />
+                  <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="dueTime">Hora límite</Label>
                 <Input
-                  id="dueDate"
-                  type="date"
-                  value={newTask.dueDate}
-                  onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                  id="dueTime"
+                  type="time"
+                  value={newTask.dueTime}
+                  onChange={(e) => setNewTask({...newTask, dueTime: e.target.value})}
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="difficulty">Dificultad</Label>
                 <Select 
@@ -364,12 +456,12 @@ export default function Tasks() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="subject">Materia</Label>
                 <Select 
                   value={newTask.subjectId} 
-                  onValueChange={(value) => setNewTask({...newTask, subjectId: value})}
+                  onValueChange={(value) => handleSubjectChange(value, true)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona materia" />
@@ -383,23 +475,37 @@ export default function Tasks() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="professor">Profesor</Label>
                 <Select 
                   value={newTask.professorId} 
                   onValueChange={(value) => setNewTask({...newTask, professorId: value})}
+                  disabled={!newTask.subjectId}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecciona profesor" />
+                    <SelectValue placeholder={!newTask.subjectId ? "Primero selecciona una materia" : "Selecciona profesor"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {professors.map((professor) => (
-                      <SelectItem key={professor.id} value={professor.id}>
-                        {professor.name}
+                    {getFilteredProfessors(newTask.subjectId).length > 0 ? (
+                      getFilteredProfessors(newTask.subjectId).map((professor) => (
+                        <SelectItem key={professor.id} value={professor.id}>
+                          {professor.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>
+                        No hay profesores asignados a esta materia
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
+                {newTask.subjectId && getFilteredProfessors(newTask.subjectId).length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Esta materia no tiene profesores asignados. Asigna un profesor a esta materia primero.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -447,13 +553,28 @@ export default function Tasks() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-dueDate">Fecha límite</Label>
+                  <div className="relative">
+                    <Input
+                      id="edit-dueDate"
+                      type="date"
+                      value={currentTask.dueDate}
+                      onChange={(e) => setCurrentTask({...currentTask, dueDate: e.target.value})}
+                      className="pr-10"
+                    />
+                    <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-muted-foreground pointer-events-none" />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-dueTime">Hora límite</Label>
                   <Input
-                    id="edit-dueDate"
-                    type="date"
-                    value={currentTask.dueDate}
-                    onChange={(e) => setCurrentTask({...currentTask, dueDate: e.target.value})}
+                    id="edit-dueTime"
+                    type="time"
+                    value={currentTask.dueTime || "23:59"}
+                    onChange={(e) => setCurrentTask({...currentTask, dueTime: e.target.value})}
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-difficulty">Dificultad</Label>
                   <Select 
@@ -474,12 +595,12 @@ export default function Tasks() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-subject">Materia</Label>
                   <Select 
                     value={currentTask.subjectId} 
-                    onValueChange={(value) => setCurrentTask({...currentTask, subjectId: value})}
+                    onValueChange={(value) => handleSubjectChange(value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona materia" />
@@ -493,23 +614,37 @@ export default function Tasks() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-professor">Profesor</Label>
                   <Select 
                     value={currentTask.professorId} 
                     onValueChange={(value) => setCurrentTask({...currentTask, professorId: value})}
+                    disabled={!currentTask.subjectId}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecciona profesor" />
+                      <SelectValue placeholder={!currentTask.subjectId ? "Primero selecciona una materia" : "Selecciona profesor"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {professors.map((professor) => (
-                        <SelectItem key={professor.id} value={professor.id}>
-                          {professor.name}
+                      {getFilteredProfessors(currentTask.subjectId).length > 0 ? (
+                        getFilteredProfessors(currentTask.subjectId).map((professor) => (
+                          <SelectItem key={professor.id} value={professor.id}>
+                            {professor.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>
+                          No hay profesores asignados a esta materia
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
+                  {currentTask.subjectId && getFilteredProfessors(currentTask.subjectId).length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Esta materia no tiene profesores asignados. Asigna un profesor a esta materia primero.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

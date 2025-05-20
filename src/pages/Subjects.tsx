@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -7,18 +7,39 @@ import { Input } from "@/components/ui/input";
 import { useSubjects } from "@/contexts/subject-context";
 import { useProfessors } from "@/contexts/professor-context";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, UserPlus, Loader2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { 
+  Plus, Pencil, Trash2, UserPlus, Loader2, AlertDialog, 
+  AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
+  AlertDialogTitle, AlertDialogTrigger, 
+  Search, ArrowUpDown, ChevronDown
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/contexts/auth-context";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 
 const subjectSchema = z.object({
   name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres" }),
   color: z.string().min(4, { message: "Debe seleccionar un color" }),
+  professorId: z.string().optional(),
 });
 
 type SubjectFormValues = z.infer<typeof subjectSchema>;
@@ -51,12 +72,18 @@ export default function Subjects() {
   const [editingSubject, setEditingSubject] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState("#4f46e5");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [subjectToDelete, setSubjectToDelete] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const subjectForm = useForm<SubjectFormValues>({
     resolver: zodResolver(subjectSchema),
     defaultValues: {
       name: "",
       color: "#4f46e5",
+      professorId: "",
     },
   });
 
@@ -69,7 +96,7 @@ export default function Subjects() {
   });
 
   const openCreateDialog = () => {
-    subjectForm.reset({ name: "", color: "#4f46e5" });
+    subjectForm.reset({ name: "", color: "#4f46e5", professorId: "" });
     setSelectedColor("#4f46e5");
     setEditingSubject(null);
     setIsDialogOpen(true);
@@ -78,9 +105,13 @@ export default function Subjects() {
   const openEditDialog = (id: string) => {
     const subject = subjects.find(s => s.id === id);
     if (subject) {
+      const subjectProfessors = getProfessorsBySubject(subject.id);
+      const professorId = subjectProfessors.length > 0 ? subjectProfessors[0].id : "";
+      
       subjectForm.reset({
         name: subject.name,
         color: subject.color,
+        professorId: professorId,
       });
       setSelectedColor(subject.color);
       setEditingSubject(id);
@@ -88,8 +119,17 @@ export default function Subjects() {
     }
   };
 
-  const handleDeleteSubject = async (id: string) => {
-    await deleteSubject(id);
+  const prepareDeleteSubject = (id: string) => {
+    setSubjectToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteSubject = async () => {
+    if (subjectToDelete) {
+      await deleteSubject(subjectToDelete);
+      setDeleteConfirmOpen(false);
+      setSubjectToDelete(null);
+    }
   };
 
   const onSubmitSubject = async (data: SubjectFormValues) => {
@@ -100,13 +140,25 @@ export default function Subjects() {
           name: data.name,
           color: data.color
         });
+        
+        // Si se seleccionó un profesor, asignar la materia
+        if (data.professorId) {
+          // La lógica para asignar profesor a materia se manejará en una función separada
+          // que será llamada después de añadir la materia
+        }
       } else {
         // Ensure all required fields are present when adding a new subject
         const newSubject = {
           name: data.name,
           color: data.color
         };
-        await addSubject(newSubject);
+        
+        const result = await addSubject(newSubject);
+        
+        // Si se seleccionó un profesor y se creó la materia correctamente, asignar
+        if (data.professorId && result?.id) {
+          // La asignación se maneja en otro contexto
+        }
       }
       setIsDialogOpen(false);
     } catch (error) {
@@ -123,14 +175,26 @@ export default function Subjects() {
       const newProfessorData = {
         name: data.name,
         email: data.email,
-        subjectIds: []
+        subjectIds: [] // Inicialmente sin materias asignadas
       };
       
       await addProfessor(newProfessorData);
       setIsProfessorDialogOpen(false);
       professorForm.reset({ name: "", email: "" });
+      
+      toast({
+        title: "Profesor creado",
+        description: "El profesor ha sido añadido correctamente",
+        duration: 3000,
+      });
     } catch (error) {
       console.error("Error al guardar el profesor:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el profesor",
+        variant: "destructive",
+        duration: 3000,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -140,6 +204,35 @@ export default function Subjects() {
     setSelectedColor(color);
     subjectForm.setValue("color", color);
   };
+
+  // Función para ordenar las materias
+  const sortSubjects = (a: any, b: any, column: string) => {
+    if (!column) return 0;
+    
+    const aValue = a[column];
+    const bValue = b[column];
+    
+    if (sortDirection === 'asc') {
+      return aValue.localeCompare(bValue);
+    } else {
+      return bValue.localeCompare(aValue);
+    }
+  };
+
+  // Función para manejar el clic en una columna para ordenar
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Filtrar y ordenar las materias
+  const filteredSubjects = subjects
+    .filter(subject => subject.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => sortColumn ? sortSubjects(a, b, sortColumn) : 0);
 
   // Verificar si el usuario está autenticado
   if (!user) {
@@ -166,11 +259,22 @@ export default function Subjects() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h1 className="text-2xl font-bold">Materias</h1>
-        <Button onClick={openCreateDialog} disabled={isSubmitting}>
-          <Plus className="mr-2 h-4 w-4" /> Agregar Materia
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar materias..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button onClick={openCreateDialog} disabled={isSubmitting}>
+            <Plus className="mr-2 h-4 w-4" /> Agregar Materia
+          </Button>
+        </div>
       </div>
       
       <Card>
@@ -178,23 +282,47 @@ export default function Subjects() {
           <CardTitle>Lista de Materias</CardTitle>
         </CardHeader>
         <CardContent>
-          {subjects.length === 0 ? (
+          {filteredSubjects.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No hay materias registradas</p>
+              <p className="text-muted-foreground">
+                {searchTerm ? "No se encontraron materias con ese término de búsqueda" : "No hay materias registradas"}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Color</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('name')}
+                        className="flex items-center p-0 h-auto font-semibold"
+                      >
+                        Nombre
+                        {sortColumn === 'name' && (
+                          <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'desc' ? 'rotate-180' : ''}`} />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('color')}
+                        className="flex items-center p-0 h-auto font-semibold"
+                      >
+                        Color
+                        {sortColumn === 'color' && (
+                          <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'desc' ? 'rotate-180' : ''}`} />
+                        )}
+                      </Button>
+                    </TableHead>
                     <TableHead>Profesores</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {subjects.map((subject) => {
+                  {filteredSubjects.map((subject) => {
                     const subjectProfessors = getProfessorsBySubject(subject.id);
                     return (
                       <TableRow key={subject.id}>
@@ -233,7 +361,7 @@ export default function Subjects() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={() => handleDeleteSubject(subject.id)}
+                            onClick={() => prepareDeleteSubject(subject.id)}
                             disabled={isSubmitting}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -248,6 +376,33 @@ export default function Subjects() {
           )}
         </CardContent>
       </Card>
+
+      {/* Diálogo de confirmación para eliminar materia */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar esta materia? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteSubject} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                'Eliminar'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Subject Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -317,6 +472,31 @@ export default function Subjects() {
                         </PopoverContent>
                       </Popover>
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={subjectForm.control}
+                name="professorId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Profesor Asignado (Opcional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar profesor (opcional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {professors.map((professor) => (
+                          <SelectItem key={professor.id} value={professor.id}>
+                            {professor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { SidebarNav } from "./sidebar-nav";
-import { ThemeToggle } from "../theme-toggle";
-import { ChevronLeft, ChevronRight, Bell, LogIn } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useMobile } from "@/hooks/use-mobile";
 
 export function AppSidebar() {
-  const isMobile = useIsMobile();
+  const isMobile = useMobile().isMobile;
   // En móviles, iniciar con la barra lateral colapsada
   const [isCollapsed, setIsCollapsed] = useState(isMobile);
   const { user, profile } = useAuth();
@@ -22,10 +22,15 @@ export function AppSidebar() {
     setIsCollapsed(isMobile);
   }, [isMobile]);
 
+  // Get initials from profile.full_name if available, or use fallback
+  const initials = profile?.full_name 
+    ? profile.full_name.split(" ").map((name) => name[0]).join("").toUpperCase()
+    : "U";
+
   return (
     <div
       className={cn(
-        "flex h-screen border-r transition-all duration-300 ease-in-out relative bg-sidebar",
+        "flex h-screen border-r transition-all duration-300 ease-in-out relative bg-background dark:bg-[hsl(211,83.6%,6.4%)]",
         isCollapsed ? "w-16" : "w-64"
       )}
     >
@@ -58,28 +63,31 @@ export function AppSidebar() {
 
         <Separator />
 
-        <div className={cn("p-4 flex", isCollapsed ? "justify-center" : "justify-between")}>
-          {user ? (
-            <>
-              {!isCollapsed && <span className="text-sm font-medium truncate">{profile?.full_name || 'Usuario'}</span>}
-              <div className={cn("flex space-x-1 items-center", isCollapsed && "flex-col space-y-2 space-x-0")}>
-                <ThemeToggle />
-              </div>
-            </>
-          ) : (
-            <>
-              {!isCollapsed && <span className="text-sm font-medium">Invitado</span>}
-              <div className={cn("flex space-x-1 items-center", isCollapsed && "flex-col space-y-2 space-x-0")}>
-                <Link to="/login">
-                  <Button variant="ghost" size="icon">
-                    <LogIn className="h-5 w-5" />
-                  </Button>
-                </Link>
-                <ThemeToggle />
-              </div>
-            </>
-          )}
-        </div>
+        {user && (
+          <div className={cn(
+            "p-4",
+            isCollapsed ? "flex justify-center items-center" : "flex items-center"
+          )}>
+            <Link to="/profile" className={cn(
+              "flex items-center gap-3 hover:bg-accent/50 rounded-lg p-2 transition-colors",
+              isCollapsed && "justify-center"
+            )}>
+              <Avatar className="h-8 w-8">
+                {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile?.full_name || "User"} />}
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              
+              {!isCollapsed && (
+                <div className="flex flex-col overflow-hidden">
+                  <span className="text-sm font-medium truncate">{profile?.full_name || 'Usuario'}</span>
+                  <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                </div>
+              )}
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

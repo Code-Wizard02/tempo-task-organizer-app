@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,6 +13,7 @@ export type Task = {
   description: string;
   completed: boolean;
   dueDate: string;
+  dueTime?: string;
   difficulty: TaskDifficulty;
   subjectId: string;
   professorId: string;
@@ -33,6 +34,7 @@ type TaskContextType = {
   getTotalTasks: () => number;
   getCompletedTasksCount: () => number;
   getPendingTasksCount: () => number;
+  getOverdueTasks: () => Task[];
 };
 
 // Crear contexto
@@ -59,6 +61,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = await supabase
           .from('tasks')
           .select('*')
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -70,7 +73,8 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
           title: item.title,
           description: item.description || '',
           completed: item.completed,
-          dueDate: item.due_date,
+          dueDate: item.due_date.split('T')[0] || item.due_date,
+          dueTime: item.due_date.includes('T') ? item.due_date.split('T')[1].substring(0, 5) : '23:59',
           difficulty: item.difficulty as TaskDifficulty,
           subjectId: item.subject_id || '',
           professorId: item.professor_id || '',
@@ -99,6 +103,11 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     
     try {
+      // Combinar fecha y hora para el formato ISO
+      const dueDateTime = task.dueTime 
+        ? `${task.dueDate}T${task.dueTime}`
+        : `${task.dueDate}T23:59:00`;
+
       const { data, error } = await supabase
         .from('tasks')
         .insert([
@@ -106,7 +115,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
             title: task.title,
             description: task.description,
             completed: task.completed,
-            due_date: task.dueDate,
+            due_date: dueDateTime,
             difficulty: task.difficulty,
             subject_id: task.subjectId || null,
             professor_id: task.professorId || null,
@@ -125,7 +134,8 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
           title: data[0].title,
           description: data[0].description || '',
           completed: data[0].completed,
-          dueDate: data[0].due_date,
+          dueDate: data[0].due_date.split('T')[0],
+          dueTime: data[0].due_date.includes('T') ? data[0].due_date.split('T')[1].substring(0, 5) : '23:59',
           difficulty: data[0].difficulty as TaskDifficulty,
           subjectId: data[0].subject_id || '',
           professorId: data[0].professor_id || '',
@@ -138,6 +148,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         toast({
           title: "Tarea creada",
           description: `La tarea "${task.title}" ha sido creada exitosamente.`,
+          duration: 3000,
         });
       }
     } catch (error) {
@@ -146,6 +157,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         title: "Error",
         description: "No se pudo crear la tarea",
         variant: "destructive",
+        duration: 3000,
       });
     }
   };
@@ -159,7 +171,19 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       if (updatedFields.title !== undefined) updateData.title = updatedFields.title;
       if (updatedFields.description !== undefined) updateData.description = updatedFields.description;
       if (updatedFields.completed !== undefined) updateData.completed = updatedFields.completed;
-      if (updatedFields.dueDate !== undefined) updateData.due_date = updatedFields.dueDate;
+      
+      // Manejar actualización de fecha y hora
+      if (updatedFields.dueDate !== undefined) {
+        const currentTask = tasks.find(t => t.id === id);
+        const timeToUse = updatedFields.dueTime || (currentTask?.dueTime || '23:59');
+        updateData.due_date = `${updatedFields.dueDate}T${timeToUse}`;
+      } else if (updatedFields.dueTime !== undefined) {
+        const currentTask = tasks.find(t => t.id === id);
+        if (currentTask) {
+          updateData.due_date = `${currentTask.dueDate}T${updatedFields.dueTime}`;
+        }
+      }
+      
       if (updatedFields.difficulty !== undefined) updateData.difficulty = updatedFields.difficulty;
       if (updatedFields.subjectId !== undefined) updateData.subject_id = updatedFields.subjectId || null;
       if (updatedFields.professorId !== undefined) updateData.professor_id = updatedFields.professorId || null;
@@ -174,17 +198,30 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
 
-      setTasks(tasks.map(task => 
-        task.id === id ? { 
-          ...task, 
-          ...updatedFields,
-          updatedAt: new Date().toISOString()
-        } : task
-      ));
+      setTasks(tasks.map(task => {
+        if (task.id === id) {
+          // Actualizar fecha y hora en el objeto local
+          let dueDate = task.dueDate;
+          let dueTime = task.dueTime;
+          
+          if (updatedFields.dueDate) dueDate = updatedFields.dueDate;
+          if (updatedFields.dueTime) dueTime = updatedFields.dueTime;
+          
+          return { 
+            ...task, 
+            ...updatedFields,
+            dueDate,
+            dueTime,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return task;
+      }));
       
       toast({
         title: "Tarea actualizada",
         description: "La tarea ha sido actualizada exitosamente.",
+        duration: 3000,
       });
     } catch (error) {
       console.error('Error al actualizar tarea:', error);
@@ -192,6 +229,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         title: "Error",
         description: "No se pudo actualizar la tarea",
         variant: "destructive",
+        duration: 3000,
       });
     }
   };
@@ -218,6 +256,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       toast({
         title: "Tarea eliminada",
         description: `La tarea "${taskToDelete?.title}" ha sido eliminada.`,
+        duration: 3000,
       });
     } catch (error) {
       console.error('Error al eliminar tarea:', error);
@@ -225,6 +264,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         title: "Error",
         description: "No se pudo eliminar la tarea",
         variant: "destructive",
+        duration: 3000,
       });
     }
   };
@@ -260,6 +300,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       toast({
         title: newStatus ? "Tarea completada" : "Tarea pendiente",
         description: `La tarea ha sido marcada como ${newStatus ? 'completada' : 'pendiente'}.`,
+        duration: 3000,
       });
     } catch (error) {
       console.error('Error al cambiar estado de la tarea:', error);
@@ -267,6 +308,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         title: "Error",
         description: "No se pudo actualizar el estado de la tarea",
         variant: "destructive",
+        duration: 3000,
       });
     }
   };
@@ -284,6 +326,16 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   // Obtener tareas pendientes
   const getPendingTasks = () => {
     return tasks.filter(task => !task.completed);
+  };
+
+  // Obtener tareas vencidas
+  const getOverdueTasks = () => {
+    const now = new Date();
+    return tasks.filter(task => {
+      if (task.completed) return false;
+      const dueDate = new Date(`${task.dueDate}T${task.dueTime || '23:59'}`);
+      return dueDate < now;
+    });
   };
 
   // Obtener total de tareas
@@ -316,6 +368,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         getTotalTasks,
         getCompletedTasksCount,
         getPendingTasksCount,
+        getOverdueTasks,
       }}
     >
       {children}
