@@ -160,28 +160,42 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          credits: number | null
           id: string
           name: string
+          professor_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           color: string
           created_at?: string
+          credits?: number | null
           id?: string
           name: string
+          professor_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           color?: string
           created_at?: string
+          credits?: number | null
           id?: string
           name?: string
+          professor_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "subjects_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {

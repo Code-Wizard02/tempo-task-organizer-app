@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
@@ -8,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 export type Professor = {
   id: string;
   name: string;
+  full_name: string; // Add full_name to match what's used in the Subjects component
   email: string;
   subjectIds: string[];
   createdAt: string;
@@ -90,6 +90,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         const formattedProfessors: Professor[] = data.map((item) => ({
           id: item.id,
           name: item.name,
+          full_name: item.name, // Set full_name to name for backward compatibility
           email: item.email,
           subjectIds: subjectsByProfessor[item.id] || [],
           createdAt: item.created_at,
@@ -136,6 +137,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         const newProfessor: Professor = {
           id: data[0].id,
           name: data[0].name,
+          full_name: data[0].name, // Set full_name to name
           email: data[0].email,
           subjectIds: [],
           createdAt: data[0].created_at,
@@ -175,7 +177,11 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
     
     try {
       const updateData: any = {};
-      if (updatedFields.name) updateData.name = updatedFields.name;
+      if (updatedFields.name) {
+        updateData.name = updatedFields.name;
+        // Also update full_name if name is updated
+        updatedFields.full_name = updatedFields.name;
+      }
       if (updatedFields.email) updateData.email = updatedFields.email;
 
       const { error } = await supabase

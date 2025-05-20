@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef } from "react";
-import { useSubjects, type Subject } from "@/contexts/subject-context";
-import { useProfessors, type Professor } from "@/contexts/professor-context";
+import { useSubjects } from "@/contexts/subject-context";
+import { useProfessors } from "@/contexts/professor-context";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/auth-context";
 
 // Local interface that matches what we need in this component
 interface SubjectWithDetails {
@@ -65,6 +65,7 @@ const Subjects = () => {
   });
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
 
@@ -74,7 +75,7 @@ const Subjects = () => {
     try {
       const { data, error } = await supabase
         .from('subjects')
-        .select('*, professors(id, full_name)');
+        .select('*');
       
       if (error) throw error;
       
@@ -82,8 +83,8 @@ const Subjects = () => {
         id: item.id,
         name: item.name,
         credits: item.credits || 0,
-        professor_id: item.professor_id || null,
-        color: item.color || "#000000",
+        professor_id: item.professor_id,
+        color: item.color,
         createdAt: item.created_at,
         updatedAt: item.updated_at
       }));
@@ -137,8 +138,8 @@ const Subjects = () => {
       const mappedSubjects = subjects.map(subject => ({
         id: subject.id,
         name: subject.name,
-        credits: 0, // Default value since it's not in the context
-        professor_id: null, // Default value since it's not in the context
+        credits: subject.credits || 0,
+        professor_id: subject.professor_id,
         color: subject.color,
         createdAt: subject.createdAt,
         updatedAt: subject.updatedAt
@@ -149,6 +150,21 @@ const Subjects = () => {
       });
     }
   }, [subjects]);
+
+  // Update local professor data when context data changes
+  useEffect(() => {
+    if (professors.length > 0) {
+      const mappedProfessors = professors.map(professor => ({
+        id: professor.id,
+        full_name: professor.full_name,
+        email: professor.email
+      }));
+      setLocalProfessors(prevProfessors => {
+        // Only update if we don't already have local data
+        return prevProfessors.length === 0 ? mappedProfessors : prevProfessors;
+      });
+    }
+  }, [professors]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -185,6 +201,7 @@ const Subjects = () => {
   };
 
   const createSubject = async (subjectData: { name: string, credits: number, professor_id: string | null }) => {
+    if (!user) return;
     try {
       const { data, error } = await supabase
         .from('subjects')
@@ -192,7 +209,8 @@ const Subjects = () => {
           name: subjectData.name,
           credits: subjectData.credits,
           professor_id: subjectData.professor_id,
-          color: "#" + Math.floor(Math.random()*16777215).toString(16) // Random color
+          color: "#" + Math.floor(Math.random()*16777215).toString(16), // Random color
+          user_id: user.id
         })
         .select();
         
@@ -202,7 +220,7 @@ const Subjects = () => {
         const newSubject: SubjectWithDetails = {
           id: data[0].id,
           name: data[0].name,
-          credits: data[0].credits,
+          credits: data[0].credits || 0,
           professor_id: data[0].professor_id,
           color: data[0].color,
           createdAt: data[0].created_at,
@@ -215,7 +233,9 @@ const Subjects = () => {
         // Add to context
         addSubject({
           name: newSubject.name,
-          color: newSubject.color
+          color: newSubject.color,
+          credits: newSubject.credits,
+          professor_id: newSubject.professor_id
         });
         
         return newSubject;
@@ -240,7 +260,7 @@ const Subjects = () => {
         const updatedSubject: SubjectWithDetails = {
           id: data[0].id,
           name: data[0].name,
-          credits: data[0].credits,
+          credits: data[0].credits || 0,
           professor_id: data[0].professor_id,
           color: data[0].color,
           createdAt: data[0].created_at,
@@ -252,10 +272,12 @@ const Subjects = () => {
           prevSubjects.map(subject => subject.id === id ? updatedSubject : subject)
         );
         
-        // Update context if name changed
-        if (updateData.name) {
-          updateContextSubject(id, { name: updateData.name });
-        }
+        // Update context
+        updateContextSubject(id, { 
+          name: updateData.name,
+          credits: updateData.credits,
+          professor_id: updateData.professor_id
+        });
         
         return updatedSubject;
       }
@@ -267,10 +289,10 @@ const Subjects = () => {
 
   const handleCreateSubject = async () => {
     try {
-      if (!subjectData.name || subjectData.credits <= 0) {
+      if (!subjectData.name || subjectData.credits < 0) {
         toast({
           title: "Error",
-          description: "Por favor, complete todos los campos.",
+          description: "Por favor, complete todos los campos correctamente.",
           variant: "destructive",
         });
         return;
@@ -295,10 +317,10 @@ const Subjects = () => {
   const handleUpdateSubject = async () => {
     if (!selectedSubject) return;
     try {
-      if (!subjectData.name || subjectData.credits <= 0) {
+      if (!subjectData.name || subjectData.credits < 0) {
         toast({
           title: "Error",
-          description: "Por favor, complete todos los campos.",
+          description: "Por favor, complete todos los campos correctamente.",
           variant: "destructive",
         });
         return;
