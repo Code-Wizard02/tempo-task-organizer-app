@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useSubject } from "@/contexts/subject-context";
-import { useProfessor } from "@/contexts/professor-context";
+import { useSubjects } from "@/contexts/subject-context";
+import { useProfessors } from "@/contexts/professor-context";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,8 +43,8 @@ interface Professor {
 }
 
 const Subjects = () => {
-  const { subjects, fetchSubjects, createSubject, updateSubject, deleteSubject } = useSubject();
-  const { professors, fetchProfessors } = useProfessor();
+  const { subjects, fetchSubjects, createSubject, updateSubject, deleteSubject } = useSubjects();
+  const { professors, fetchProfessors } = useProfessors();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "ascending" as "ascending" | "descending" });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
