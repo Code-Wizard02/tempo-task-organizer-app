@@ -8,12 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, Camera } from "lucide-react";
+import { Loader2, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 
 export default function Profile() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, updateProfile } = useAuth();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -58,13 +58,18 @@ export default function Profile() {
         .update({
           full_name: formData.fullName,
           bio: formData.bio,
-          updated_at: new Date(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 
       if (error) throw error;
 
-      await refreshProfile();
+      // Refresh profile using the existing updateProfile function
+      await updateProfile({
+        full_name: formData.fullName,
+        bio: formData.bio
+      });
+
       toast({
         title: "Perfil actualizado",
         description: "Tu información ha sido actualizada exitosamente.",
@@ -114,14 +119,14 @@ export default function Profile() {
         .from('profiles')
         .update({ 
           avatar_url: data.publicUrl,
-          updated_at: new Date() 
+          updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
       
       if (updateError) throw updateError;
       
-      // 4. Refrescar el perfil en el contexto
-      await refreshProfile();
+      // 4. Refrescar el perfil en el contexto usando updateProfile
+      await updateProfile({ avatar_url: data.publicUrl });
       
       toast({
         title: "Avatar actualizado",

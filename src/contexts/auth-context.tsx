@@ -3,7 +3,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import type { Profile } from '@/types/app-types';
-import { error } from 'console';
 
 // Authentication context type
 type AuthContextType = {
@@ -36,6 +35,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Function to fetch user profile
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (!error && data) {
+        setProfile(data);
+      }
+      return data;
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      return null;
+    }
+  };
+
   // Initial session check
   useEffect(() => {
     const checkSession = async () => {
@@ -46,16 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user profile
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (!error && data) {
-            setProfile(data);
-          }
+          await fetchProfile(session.user.id);
         }
       } catch (error) {
         console.error("Error checking session:", error);
@@ -72,13 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-          
-        setProfile(data || null);
+        await fetchProfile(session.user.id);
       } else {
         setProfile(null);
       }
@@ -170,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
         
       if (!error && data) {
-        setProfile(data);
+        setProfile(prev => ({...prev as Profile, ...data}));
         return { data, error: null };
       }
       

@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 import type {
@@ -7,14 +6,13 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 5
-const TOAST_REMOVE_DELAY = 3000 // Cambiado de 1000000 a 3000 (3 segundos)
+const TOAST_REMOVE_DELAY = 1000000
 
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
-  duration?: number // Nuevo campo para controlar duración
 }
 
 const actionTypes = {
@@ -57,7 +55,23 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
-const reducer = (state: State, action: Action): State => {
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId)
+    dispatch({
+      type: actionTypes.REMOVE_TOAST,
+      toastId: toastId,
+    })
+  }, TOAST_REMOVE_DELAY)
+
+  toastTimeouts.set(toastId, timeout)
+}
+
+export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case actionTypes.ADD_TOAST:
       return {
@@ -125,18 +139,10 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
-function toast({ ...props }: Toast) {
+function toast(props: Toast) {
   const id = genId()
 
-  // Programar el cierre automático del toast después del tiempo especificado
-  const duration = props.duration || TOAST_REMOVE_DELAY; // Usa duración personalizada o valor por defecto
-  if (duration) {
-    setTimeout(() => {
-      dismiss(id);
-    }, duration);
-  }
-
-  const update = (props: ToasterToast) =>
+  const update = (props: Toast) =>
     dispatch({
       type: actionTypes.UPDATE_TOAST,
       toast: { ...props, id },
@@ -160,22 +166,6 @@ function toast({ ...props }: Toast) {
     dismiss,
     update,
   }
-}
-
-function addToRemoveQueue(toastId: string) {
-  if (toastTimeouts.has(toastId)) {
-    return
-  }
-
-  const timeout = setTimeout(() => {
-    toastTimeouts.delete(toastId)
-    dispatch({
-      type: actionTypes.REMOVE_TOAST,
-      toastId: toastId,
-    })
-  }, 100) // Cambiado para que se elimine más rápido después de cerrarse
-
-  toastTimeouts.set(toastId, timeout)
 }
 
 function useToast() {
