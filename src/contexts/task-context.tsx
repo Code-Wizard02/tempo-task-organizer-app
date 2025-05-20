@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/contexts/auth-context';
+import { supabase } from '@/integrations/supabase/client';
 
 // Tipos
 export type TaskDifficulty = 'easy' | 'medium' | 'hard';
@@ -21,10 +22,11 @@ export type Task = {
 
 type TaskContextType = {
   tasks: Task[];
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateTask: (id: string, task: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  toggleTaskStatus: (id: string) => void;
+  isLoading: boolean;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateTask: (id: string, task: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  toggleTaskStatus: (id: string) => Promise<void>;
   getTasksByDifficulty: (difficulty: TaskDifficulty) => Task[];
   getCompletedTasks: () => Task[];
   getPendingTasks: () => Task[];
@@ -33,132 +35,240 @@ type TaskContextType = {
   getPendingTasksCount: () => number;
 };
 
-// Mock de tareas iniciales
-const initialTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Completar tarea de matemáticas',
-    description: 'Ejercicios del 1 al 10 del capítulo 3',
-    completed: false,
-    dueDate: '2023-05-20',
-    difficulty: 'medium',
-    subjectId: '1',
-    professorId: '1',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Estudiar para examen de física',
-    description: 'Repasar leyes de Newton y movimiento circular',
-    completed: true,
-    dueDate: '2023-05-18',
-    difficulty: 'hard',
-    subjectId: '2',
-    professorId: '2',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    title: 'Preparar presentación de historia',
-    description: 'Sobre la revolución industrial',
-    completed: false,
-    dueDate: '2023-05-25',
-    difficulty: 'easy',
-    subjectId: '3',
-    professorId: '3',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
 // Crear contexto
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 // Provider
 export function TaskProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Cargar tareas al iniciar
+  // Cargar tareas desde Supabase
   useEffect(() => {
-    if (user) {
-      // En una app real, aquí cargaríamos las tareas del usuario desde un backend
-      // Por ahora usamos datos mock
-      const storedTasks = localStorage.getItem(`tasks-${user.id}`);
-      if (storedTasks) {
-        setTasks(JSON.parse(storedTasks));
-      } else {
-        setTasks(initialTasks);
-        localStorage.setItem(`tasks-${user.id}`, JSON.stringify(initialTasks));
+    async function loadTasks() {
+      if (!user) {
+        setTasks([]);
+        setIsLoading(false);
+        return;
       }
-    } else {
-      setTasks([]);
-    }
-  }, [user]);
 
-  // Guardar tareas cuando cambien
-  useEffect(() => {
-    if (user && tasks.length > 0) {
-      localStorage.setItem(`tasks-${user.id}`, JSON.stringify(tasks));
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        const formattedTasks: Task[] = data.map((item) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || '',
+          completed: item.completed,
+          dueDate: item.due_date,
+          difficulty: item.difficulty as TaskDifficulty,
+          subjectId: item.subject_id || '',
+          professorId: item.professor_id || '',
+          createdAt: item.created_at,
+          updatedAt: item.updated_at
+        }));
+
+        setTasks(formattedTasks);
+      } catch (error) {
+        console.error('Error al cargar tareas:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las tareas",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }, [tasks, user]);
+
+    loadTasks();
+  }, [user, toast]);
 
   // Añadir tarea
-  const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const now = new Date().toISOString();
-    const newTask: Task = {
-      ...task,
-      id: Date.now().toString(),
-      createdAt: now,
-      updatedAt: now,
-    };
+  const addTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!user) return;
     
-    setTasks([...tasks, newTask]);
-    toast({
-      title: "Tarea creada",
-      description: `La tarea "${task.title}" ha sido creada exitosamente.`,
-    });
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([
+          {
+            title: task.title,
+            description: task.description,
+            completed: task.completed,
+            due_date: task.dueDate,
+            difficulty: task.difficulty,
+            subject_id: task.subjectId || null,
+            professor_id: task.professorId || null,
+            user_id: user.id
+          }
+        ])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data[0]) {
+        const newTask: Task = {
+          id: data[0].id,
+          title: data[0].title,
+          description: data[0].description || '',
+          completed: data[0].completed,
+          dueDate: data[0].due_date,
+          difficulty: data[0].difficulty as TaskDifficulty,
+          subjectId: data[0].subject_id || '',
+          professorId: data[0].professor_id || '',
+          createdAt: data[0].created_at,
+          updatedAt: data[0].updated_at
+        };
+        
+        setTasks([newTask, ...tasks]);
+        
+        toast({
+          title: "Tarea creada",
+          description: `La tarea "${task.title}" ha sido creada exitosamente.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error al crear tarea:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo crear la tarea",
+        variant: "destructive",
+      });
+    }
   };
 
   // Actualizar tarea
-  const updateTask = (id: string, updatedFields: Partial<Task>) => {
-    setTasks(tasks.map(task => 
-      task.id === id ? { 
-        ...task, 
-        ...updatedFields, 
-        updatedAt: new Date().toISOString() 
-      } : task
-    ));
+  const updateTask = async (id: string, updatedFields: Partial<Task>) => {
+    if (!user) return;
     
-    toast({
-      title: "Tarea actualizada",
-      description: "La tarea ha sido actualizada exitosamente.",
-    });
+    try {
+      const updateData: any = {};
+      if (updatedFields.title !== undefined) updateData.title = updatedFields.title;
+      if (updatedFields.description !== undefined) updateData.description = updatedFields.description;
+      if (updatedFields.completed !== undefined) updateData.completed = updatedFields.completed;
+      if (updatedFields.dueDate !== undefined) updateData.due_date = updatedFields.dueDate;
+      if (updatedFields.difficulty !== undefined) updateData.difficulty = updatedFields.difficulty;
+      if (updatedFields.subjectId !== undefined) updateData.subject_id = updatedFields.subjectId || null;
+      if (updatedFields.professorId !== undefined) updateData.professor_id = updatedFields.professorId || null;
+
+      const { error } = await supabase
+        .from('tasks')
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setTasks(tasks.map(task => 
+        task.id === id ? { 
+          ...task, 
+          ...updatedFields,
+          updatedAt: new Date().toISOString()
+        } : task
+      ));
+      
+      toast({
+        title: "Tarea actualizada",
+        description: "La tarea ha sido actualizada exitosamente.",
+      });
+    } catch (error) {
+      console.error('Error al actualizar tarea:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la tarea",
+        variant: "destructive",
+      });
+    }
   };
 
   // Eliminar tarea
-  const deleteTask = (id: string) => {
-    const taskToDelete = tasks.find(t => t.id === id);
-    setTasks(tasks.filter(task => task.id !== id));
+  const deleteTask = async (id: string) => {
+    if (!user) return;
     
-    toast({
-      title: "Tarea eliminada",
-      description: `La tarea "${taskToDelete?.title}" ha sido eliminada.`,
-    });
+    try {
+      const taskToDelete = tasks.find(t => t.id === id);
+      
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setTasks(tasks.filter(task => task.id !== id));
+      
+      toast({
+        title: "Tarea eliminada",
+        description: `La tarea "${taskToDelete?.title}" ha sido eliminada.`,
+      });
+    } catch (error) {
+      console.error('Error al eliminar tarea:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la tarea",
+        variant: "destructive",
+      });
+    }
   };
 
   // Alternar estado de completado
-  const toggleTaskStatus = (id: string) => {
-    setTasks(tasks.map(task => 
-      task.id === id ? { 
-        ...task, 
-        completed: !task.completed,
-        updatedAt: new Date().toISOString() 
-      } : task
-    ));
+  const toggleTaskStatus = async (id: string) => {
+    if (!user) return;
+    
+    try {
+      const taskToUpdate = tasks.find(t => t.id === id);
+      if (!taskToUpdate) return;
+      
+      const newStatus = !taskToUpdate.completed;
+      
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: newStatus })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setTasks(tasks.map(task => 
+        task.id === id ? { 
+          ...task, 
+          completed: newStatus,
+          updatedAt: new Date().toISOString()
+        } : task
+      ));
+      
+      toast({
+        title: newStatus ? "Tarea completada" : "Tarea pendiente",
+        description: `La tarea ha sido marcada como ${newStatus ? 'completada' : 'pendiente'}.`,
+      });
+    } catch (error) {
+      console.error('Error al cambiar estado de la tarea:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado de la tarea",
+        variant: "destructive",
+      });
+    }
   };
 
   // Obtener tareas por dificultad
@@ -195,6 +305,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     <TaskContext.Provider 
       value={{ 
         tasks, 
+        isLoading,
         addTask, 
         updateTask, 
         deleteTask, 

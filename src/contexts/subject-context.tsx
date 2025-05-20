@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/contexts/auth-context';
+import { supabase } from '@/integrations/supabase/client';
 
 // Tipos
 export type Subject = {
@@ -14,36 +15,12 @@ export type Subject = {
 
 type SubjectContextType = {
   subjects: Subject[];
-  addSubject: (subject: Omit<Subject, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateSubject: (id: string, subject: Partial<Subject>) => void;
-  deleteSubject: (id: string) => void;
+  isLoading: boolean;
+  addSubject: (subject: Omit<Subject, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateSubject: (id: string, subject: Partial<Subject>) => Promise<void>;
+  deleteSubject: (id: string) => Promise<void>;
   getSubject: (id: string) => Subject | undefined;
 };
-
-// Mock de materias iniciales
-const initialSubjects: Subject[] = [
-  {
-    id: '1',
-    name: 'Matemáticas',
-    color: '#4f46e5',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    name: 'Física',
-    color: '#0891b2',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Historia',
-    color: '#b45309',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
 
 // Crear contexto
 const SubjectContext = createContext<SubjectContextType | undefined>(undefined);
@@ -51,73 +28,172 @@ const SubjectContext = createContext<SubjectContextType | undefined>(undefined);
 // Provider
 export function SubjectProvider({ children }: { children: React.ReactNode }) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Cargar materias al iniciar
+  // Cargar materias desde Supabase
   useEffect(() => {
-    if (user) {
-      const storedSubjects = localStorage.getItem(`subjects-${user.id}`);
-      if (storedSubjects) {
-        setSubjects(JSON.parse(storedSubjects));
-      } else {
-        setSubjects(initialSubjects);
-        localStorage.setItem(`subjects-${user.id}`, JSON.stringify(initialSubjects));
+    async function loadSubjects() {
+      if (!user) {
+        setSubjects([]);
+        setIsLoading(false);
+        return;
       }
-    } else {
-      setSubjects([]);
-    }
-  }, [user]);
 
-  // Guardar materias cuando cambien
-  useEffect(() => {
-    if (user && subjects.length > 0) {
-      localStorage.setItem(`subjects-${user.id}`, JSON.stringify(subjects));
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('subjects')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        const formattedSubjects: Subject[] = data.map((item) => ({
+          id: item.id,
+          name: item.name,
+          color: item.color,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at
+        }));
+
+        setSubjects(formattedSubjects);
+      } catch (error) {
+        console.error('Error al cargar materias:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las materias",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }, [subjects, user]);
+
+    loadSubjects();
+  }, [user, toast]);
 
   // Añadir materia
-  const addSubject = (subject: Omit<Subject, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const now = new Date().toISOString();
-    const newSubject: Subject = {
-      ...subject,
-      id: Date.now().toString(),
-      createdAt: now,
-      updatedAt: now,
-    };
+  const addSubject = async (subject: Omit<Subject, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!user) return;
     
-    setSubjects([...subjects, newSubject]);
-    toast({
-      title: "Materia creada",
-      description: `La materia "${subject.name}" ha sido creada exitosamente.`,
-    });
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .insert([
+          {
+            name: subject.name,
+            color: subject.color,
+            user_id: user.id
+          }
+        ])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data[0]) {
+        const newSubject: Subject = {
+          id: data[0].id,
+          name: data[0].name,
+          color: data[0].color,
+          createdAt: data[0].created_at,
+          updatedAt: data[0].updated_at
+        };
+        
+        setSubjects([newSubject, ...subjects]);
+        
+        toast({
+          title: "Materia creada",
+          description: `La materia "${subject.name}" ha sido creada exitosamente.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error al crear materia:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo crear la materia",
+        variant: "destructive",
+      });
+    }
   };
 
   // Actualizar materia
-  const updateSubject = (id: string, updatedFields: Partial<Subject>) => {
-    setSubjects(subjects.map(subject => 
-      subject.id === id ? { 
-        ...subject, 
-        ...updatedFields, 
-        updatedAt: new Date().toISOString() 
-      } : subject
-    ));
+  const updateSubject = async (id: string, updatedFields: Partial<Subject>) => {
+    if (!user) return;
     
-    toast({
-      title: "Materia actualizada",
-      description: "La materia ha sido actualizada exitosamente.",
-    });
+    try {
+      const updateData: any = {};
+      if (updatedFields.name) updateData.name = updatedFields.name;
+      if (updatedFields.color) updateData.color = updatedFields.color;
+
+      const { error } = await supabase
+        .from('subjects')
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setSubjects(subjects.map(subject => 
+        subject.id === id ? { 
+          ...subject, 
+          ...updatedFields, 
+          updatedAt: new Date().toISOString() 
+        } : subject
+      ));
+      
+      toast({
+        title: "Materia actualizada",
+        description: "La materia ha sido actualizada exitosamente.",
+      });
+    } catch (error) {
+      console.error('Error al actualizar materia:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la materia",
+        variant: "destructive",
+      });
+    }
   };
 
   // Eliminar materia
-  const deleteSubject = (id: string) => {
-    const subjectToDelete = subjects.find(s => s.id === id);
-    setSubjects(subjects.filter(subject => subject.id !== id));
+  const deleteSubject = async (id: string) => {
+    if (!user) return;
     
-    toast({
-      title: "Materia eliminada",
-      description: `La materia "${subjectToDelete?.name}" ha sido eliminada.`,
-    });
+    try {
+      const subjectToDelete = subjects.find(s => s.id === id);
+      
+      const { error } = await supabase
+        .from('subjects')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setSubjects(subjects.filter(subject => subject.id !== id));
+      
+      toast({
+        title: "Materia eliminada",
+        description: `La materia "${subjectToDelete?.name}" ha sido eliminada.`,
+      });
+    } catch (error) {
+      console.error('Error al eliminar materia:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la materia",
+        variant: "destructive",
+      });
+    }
   };
 
   // Obtener materia por ID
@@ -129,6 +205,7 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
     <SubjectContext.Provider 
       value={{ 
         subjects, 
+        isLoading,
         addSubject, 
         updateSubject, 
         deleteSubject,

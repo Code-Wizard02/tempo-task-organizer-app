@@ -7,14 +7,14 @@ import { Input } from "@/components/ui/input";
 import { useSubjects } from "@/contexts/subject-context";
 import { useProfessors } from "@/contexts/professor-context";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, UserPlus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Plus, Pencil, Trash2, UserPlus, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/auth-context";
 
 const subjectSchema = z.object({
   name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres" }),
@@ -42,13 +42,15 @@ const predefinedColors = [
 ];
 
 export default function Subjects() {
-  const { subjects, addSubject, updateSubject, deleteSubject } = useSubjects();
-  const { professors, addProfessor } = useProfessors();
+  const { subjects, isLoading: isLoadingSubjects, addSubject, updateSubject, deleteSubject } = useSubjects();
+  const { professors, isLoading: isLoadingProfessors, addProfessor, getProfessorsBySubject } = useProfessors();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProfessorDialogOpen, setIsProfessorDialogOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState("#4f46e5");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const subjectForm = useForm<SubjectFormValues>({
     resolver: zodResolver(subjectSchema),
@@ -86,51 +88,52 @@ export default function Subjects() {
     }
   };
 
-  const handleDeleteSubject = (id: string) => {
-    deleteSubject(id);
+  const handleDeleteSubject = async (id: string) => {
+    await deleteSubject(id);
   };
 
-  const onSubmitSubject = (data: SubjectFormValues) => {
-    if (editingSubject) {
-      updateSubject(editingSubject, {
-        name: data.name,
-        color: data.color
-      });
-      toast({
-        title: "Materia actualizada",
-        description: `La materia ${data.name} ha sido actualizada`,
-      });
-    } else {
-      // Ensure all required fields are present when adding a new subject
-      const newSubject = {
-        name: data.name,
-        color: data.color
-      };
-      addSubject(newSubject);
-      toast({
-        title: "Materia agregada",
-        description: `La materia ${data.name} ha sido agregada`,
-      });
+  const onSubmitSubject = async (data: SubjectFormValues) => {
+    setIsSubmitting(true);
+    try {
+      if (editingSubject) {
+        await updateSubject(editingSubject, {
+          name: data.name,
+          color: data.color
+        });
+      } else {
+        // Ensure all required fields are present when adding a new subject
+        const newSubject = {
+          name: data.name,
+          color: data.color
+        };
+        await addSubject(newSubject);
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Error al guardar la materia:", error);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsDialogOpen(false);
   };
 
-  const onSubmitProfessor = (data: ProfessorFormValues) => {
-    // Add the new professor with the current subject as the only assigned subject
-    const newProfessorData = {
-      name: data.name,
-      email: data.email,
-      subjectIds: [] // This will be updated once we create the subject
-    };
-    
-    addProfessor(newProfessorData);
-    toast({
-      title: "Profesor agregado",
-      description: `El profesor ${data.name} ha sido agregado exitosamente`,
-    });
-    
-    setIsProfessorDialogOpen(false);
-    professorForm.reset({ name: "", email: "" });
+  const onSubmitProfessor = async (data: ProfessorFormValues) => {
+    setIsSubmitting(true);
+    try {
+      // Add the new professor
+      const newProfessorData = {
+        name: data.name,
+        email: data.email,
+        subjectIds: []
+      };
+      
+      await addProfessor(newProfessorData);
+      setIsProfessorDialogOpen(false);
+      professorForm.reset({ name: "", email: "" });
+    } catch (error) {
+      console.error("Error al guardar el profesor:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleColorSelect = (color: string) => {
@@ -138,15 +141,34 @@ export default function Subjects() {
     subjectForm.setValue("color", color);
   };
 
-  const getProfessorsBySubject = (subjectId: string) => {
-    return professors.filter(p => p.subjectIds.includes(subjectId));
-  };
+  // Verificar si el usuario está autenticado
+  if (!user) {
+    return (
+      <div className="container mx-auto py-6 text-center">
+        <h1 className="text-2xl font-bold mb-4">Acceso Denegado</h1>
+        <p className="mb-4">Debes iniciar sesión para ver esta página.</p>
+        <Button onClick={() => window.location.href = "/login"}>
+          Iniciar Sesión
+        </Button>
+      </div>
+    );
+  }
+
+  // Mostrar estado de carga
+  if (isLoadingSubjects || isLoadingProfessors) {
+    return (
+      <div className="container mx-auto py-6 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+        <p>Cargando materias...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Materias</h1>
-        <Button onClick={openCreateDialog}>
+        <Button onClick={openCreateDialog} disabled={isSubmitting}>
           <Plus className="mr-2 h-4 w-4" /> Agregar Materia
         </Button>
       </div>
@@ -200,10 +222,20 @@ export default function Subjects() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(subject.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => openEditDialog(subject.id)}
+                            disabled={isSubmitting}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteSubject(subject.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeleteSubject(subject.id)}
+                            disabled={isSubmitting}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -305,6 +337,7 @@ export default function Subjects() {
                     variant="outline"
                     size="sm"
                     onClick={() => setIsProfessorDialogOpen(true)}
+                    disabled={isSubmitting}
                   >
                     <UserPlus className="mr-2 h-4 w-4" />
                     Nuevo Profesor
@@ -313,8 +346,17 @@ export default function Subjects() {
               </div>
 
               <DialogFooter>
-                <Button type="submit">
-                  {editingSubject ? 'Guardar Cambios' : 'Agregar Materia'}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : editingSubject ? (
+                    'Guardar Cambios'
+                  ) : (
+                    'Agregar Materia'
+                  )}
                 </Button>
               </DialogFooter>
             </form>
@@ -362,7 +404,16 @@ export default function Subjects() {
               />
 
               <DialogFooter>
-                <Button type="submit">Agregar Profesor</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    'Agregar Profesor'
+                  )}
+                </Button>
               </DialogFooter>
             </form>
           </Form>
