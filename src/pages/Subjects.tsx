@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from "react";
-import { useSubjects } from "@/contexts/subject-context";
-import { useProfessors } from "@/contexts/professor-context";
+import { useSubjects, type Subject } from "@/contexts/subject-context";
+import { useProfessors, type Professor } from "@/contexts/professor-context";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,43 +29,126 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-interface Subject {
-  id: number;
+// Local interface that matches what we need in this component
+interface SubjectWithDetails {
+  id: string;
   name: string;
   credits: number;
-  professor_id: number | null;
-  created_at?: string;
+  professor_id: string | null;
+  color: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-interface Professor {
-  id: number;
+interface ProfessorWithDetails {
+  id: string;
   full_name: string;
+  email: string;
 }
 
 const Subjects = () => {
-  const { subjects, fetchSubjects, createSubject, updateSubject, deleteSubject } = useSubjects();
-  const { professors, fetchProfessors } = useProfessors();
+  const { subjects, isLoading: isLoadingSubjects, addSubject, updateSubject: updateContextSubject, deleteSubject } = useSubjects();
+  const { professors, isLoading: isLoadingProfessors } = useProfessors();
+  const [localSubjects, setLocalSubjects] = useState<SubjectWithDetails[]>([]);
+  const [localProfessors, setLocalProfessors] = useState<ProfessorWithDetails[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "ascending" as "ascending" | "descending" });
+  const [sortConfig, setSortConfig] = useState({ key: null as string | null, direction: "ascending" as "ascending" | "descending" });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectWithDetails | null>(null);
   const [subjectData, setSubjectData] = useState({
     name: "",
     credits: 0,
-    professor_id: null as number | null,
+    professor_id: null as string | null,
   });
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
 
-  useEffect(() => {
+  // Load subjects and professors from the database
+  const fetchSubjectsFromDb = async () => {
     setIsLoading(true);
-    Promise.all([fetchSubjects(), fetchProfessors()])
-      .finally(() => setIsLoading(false));
-  }, [fetchSubjects, fetchProfessors]);
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*, professors(id, full_name)');
+      
+      if (error) throw error;
+      
+      const formattedSubjects: SubjectWithDetails[] = data.map(item => ({
+        id: item.id,
+        name: item.name,
+        credits: item.credits || 0,
+        professor_id: item.professor_id || null,
+        color: item.color || "#000000",
+        createdAt: item.created_at,
+        updatedAt: item.updated_at
+      }));
+      
+      setLocalSubjects(formattedSubjects);
+    } catch (error) {
+      console.error("Error fetching subjects:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las materias.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const fetchProfessorsFromDb = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('professors')
+        .select('*');
+      
+      if (error) throw error;
+      
+      const formattedProfessors: ProfessorWithDetails[] = data.map(item => ({
+        id: item.id,
+        full_name: item.name,
+        email: item.email
+      }));
+      
+      setLocalProfessors(formattedProfessors);
+    } catch (error) {
+      console.error("Error fetching professors:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los profesores.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchSubjectsFromDb();
+    fetchProfessorsFromDb();
+  }, []);
+
+  // Update local subject data when context data changes
+  useEffect(() => {
+    if (subjects.length > 0) {
+      const mappedSubjects = subjects.map(subject => ({
+        id: subject.id,
+        name: subject.name,
+        credits: 0, // Default value since it's not in the context
+        professor_id: null, // Default value since it's not in the context
+        color: subject.color,
+        createdAt: subject.createdAt,
+        updatedAt: subject.updatedAt
+      }));
+      setLocalSubjects(prevSubjects => {
+        // Only update if we don't already have local data
+        return prevSubjects.length === 0 ? mappedSubjects : prevSubjects;
+      });
+    }
+  }, [subjects]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -75,7 +159,7 @@ const Subjects = () => {
     setIsCreateDialogOpen(true);
   };
 
-  const handleEditDialogOpen = (subject: Subject) => {
+  const handleEditDialogOpen = (subject: SubjectWithDetails) => {
     setSelectedSubject(subject);
     setSubjectData({
       name: subject.name,
@@ -89,20 +173,101 @@ const Subjects = () => {
     const { name, value } = e.target;
     setSubjectData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: name === "credits" ? parseInt(value, 10) || 0 : value,
     }));
   };
 
   const handleSelectChange = (value: string) => {
     setSubjectData(prev => ({
       ...prev,
-      professor_id: value === "null" ? null : parseInt(value, 10),
+      professor_id: value === "null" ? null : value,
     }));
+  };
+
+  const createSubject = async (subjectData: { name: string, credits: number, professor_id: string | null }) => {
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .insert({
+          name: subjectData.name,
+          credits: subjectData.credits,
+          professor_id: subjectData.professor_id,
+          color: "#" + Math.floor(Math.random()*16777215).toString(16) // Random color
+        })
+        .select();
+        
+      if (error) throw error;
+      
+      if (data && data[0]) {
+        const newSubject: SubjectWithDetails = {
+          id: data[0].id,
+          name: data[0].name,
+          credits: data[0].credits,
+          professor_id: data[0].professor_id,
+          color: data[0].color,
+          createdAt: data[0].created_at,
+          updatedAt: data[0].updated_at
+        };
+        
+        // Add to local state
+        setLocalSubjects(prevSubjects => [newSubject, ...prevSubjects]);
+        
+        // Add to context
+        addSubject({
+          name: newSubject.name,
+          color: newSubject.color
+        });
+        
+        return newSubject;
+      }
+    } catch (error) {
+      console.error("Error creating subject:", error);
+      throw error;
+    }
+  };
+  
+  const updateSubject = async (id: string, updateData: { name?: string, credits?: number, professor_id?: string | null }) => {
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .update(updateData)
+        .eq('id', id)
+        .select();
+        
+      if (error) throw error;
+      
+      if (data && data[0]) {
+        const updatedSubject: SubjectWithDetails = {
+          id: data[0].id,
+          name: data[0].name,
+          credits: data[0].credits,
+          professor_id: data[0].professor_id,
+          color: data[0].color,
+          createdAt: data[0].created_at,
+          updatedAt: data[0].updated_at
+        };
+        
+        // Update local state
+        setLocalSubjects(prevSubjects => 
+          prevSubjects.map(subject => subject.id === id ? updatedSubject : subject)
+        );
+        
+        // Update context if name changed
+        if (updateData.name) {
+          updateContextSubject(id, { name: updateData.name });
+        }
+        
+        return updatedSubject;
+      }
+    } catch (error) {
+      console.error("Error updating subject:", error);
+      throw error;
+    }
   };
 
   const handleCreateSubject = async () => {
     try {
-      if (!subjectData.name || !subjectData.credits) {
+      if (!subjectData.name || subjectData.credits <= 0) {
         toast({
           title: "Error",
           description: "Por favor, complete todos los campos.",
@@ -130,7 +295,7 @@ const Subjects = () => {
   const handleUpdateSubject = async () => {
     if (!selectedSubject) return;
     try {
-      if (!subjectData.name || !subjectData.credits) {
+      if (!subjectData.name || subjectData.credits <= 0) {
         toast({
           title: "Error",
           description: "Por favor, complete todos los campos.",
@@ -156,9 +321,15 @@ const Subjects = () => {
     }
   };
 
-  const handleDeleteSubject = async (subjectId: number) => {
+  const handleDeleteSubject = async (subjectId: string) => {
     try {
       await deleteSubject(subjectId);
+      
+      // Update local state
+      setLocalSubjects(prevSubjects => 
+        prevSubjects.filter(subject => subject.id !== subjectId)
+      );
+      
       toast({
         title: "Éxito",
         description: "Materia eliminada correctamente.",
@@ -174,20 +345,20 @@ const Subjects = () => {
   };
 
   const sortedSubjects = React.useMemo(() => {
-    let sortableItems = [...subjects];
+    let sortableItems = [...localSubjects];
     if (sortConfig.key !== null) {
       sortableItems.sort((a: any, b: any) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
+        if (a[sortConfig.key as keyof SubjectWithDetails] < b[sortConfig.key as keyof SubjectWithDetails]) {
           return sortConfig.direction === "ascending" ? -1 : 1;
         }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
+        if (a[sortConfig.key as keyof SubjectWithDetails] > b[sortConfig.key as keyof SubjectWithDetails]) {
           return sortConfig.direction === "ascending" ? 1 : -1;
         }
         return 0;
       });
     }
     return sortableItems;
-  }, [subjects, sortConfig]);
+  }, [localSubjects, sortConfig]);
 
   const requestSort = (key: string) => {
     let direction: "ascending" | "descending" = "ascending";
@@ -200,6 +371,15 @@ const Subjects = () => {
   const filteredSubjects = sortedSubjects.filter(subject =>
     subject.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Find professor name by ID
+  const getProfessorName = (professorId: string | null) => {
+    if (!professorId) return "Sin profesor";
+    const professor = localProfessors.find(p => p.id === professorId);
+    return professor ? professor.full_name : "Sin profesor";
+  };
+
+  const isAllLoading = isLoading || isLoadingSubjects || isLoadingProfessors;
 
   return (
     <div className="container mx-auto py-6">
@@ -224,7 +404,7 @@ const Subjects = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isAllLoading ? (
             <div className="flex items-center justify-center">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Cargando materias...
@@ -260,7 +440,7 @@ const Subjects = () => {
                         {subject.credits}
                       </td>
                       <td className="px-6 py-4">
-                        {professors.find(professor => professor.id === subject.professor_id)?.full_name || "Sin profesor"}
+                        {getProfessorName(subject.professor_id)}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex space-x-2">
@@ -336,14 +516,14 @@ const Subjects = () => {
               <Label htmlFor="professor" className="text-right">
                 Profesor
               </Label>
-              <Select onValueChange={handleSelectChange}>
+              <Select onValueChange={handleSelectChange} value={subjectData.professor_id || "null"}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Selecciona un profesor" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="null">Sin profesor</SelectItem>
-                  {professors.map(professor => (
-                    <SelectItem key={professor.id} value={professor.id.toString()}>
+                  {localProfessors.map(professor => (
+                    <SelectItem key={professor.id} value={professor.id}>
                       {professor.full_name}
                     </SelectItem>
                   ))}
@@ -401,14 +581,14 @@ const Subjects = () => {
               <Label htmlFor="professor" className="text-right">
                 Profesor
               </Label>
-              <Select onValueChange={handleSelectChange}>
+              <Select onValueChange={handleSelectChange} value={subjectData.professor_id || "null"}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Selecciona un profesor" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="null">Sin profesor</SelectItem>
-                  {professors.map(professor => (
-                    <SelectItem key={professor.id} value={professor.id.toString()}>
+                  {localProfessors.map(professor => (
+                    <SelectItem key={professor.id} value={professor.id}>
                       {professor.full_name}
                     </SelectItem>
                   ))}
