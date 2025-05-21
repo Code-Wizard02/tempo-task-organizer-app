@@ -17,7 +17,14 @@ export function useIsMobile() {
 
   React.useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+      // Type guard for userAgentData (not available in all browsers)
+      const userAgent =
+        navigator.userAgent ||
+        (typeof (navigator as any).userAgentData !== "undefined"
+          ? (navigator as any).userAgentData.brands?.map((b: any) => b.brand).join(" ")
+          : "");
+      const isMobileDevice = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(userAgent);
+      setIsMobile(isMobileDevice || window.innerWidth < MOBILE_BREAKPOINT)
     }
     
     // Ejecutar también al inicio

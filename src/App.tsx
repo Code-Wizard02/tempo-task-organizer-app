@@ -10,25 +10,24 @@ import Dashboard from "@/pages/Dashboard";
 import Tasks from "@/pages/Tasks";
 import Subjects from "@/pages/Subjects";
 import Professors from "@/pages/Professors";
-import Schedule from "@/pages/Schedule";
 import Index from "@/pages/Index";
 import { AuthProvider } from "@/contexts/auth-context";
 import { TaskProvider } from "@/contexts/task-context";
 import { SubjectProvider } from "@/contexts/subject-context";
 import { ProfessorProvider } from "@/contexts/professor-context";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ScheduleProvider } from "@/contexts/schedule-context";
 import Profile from "@/pages/Profile"; // Import Profile page
+import { MobileProvider } from "./hooks/use-mobile";
 
 function App() {
   return (
+    <MobileProvider>
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
           <SubjectProvider>
             <ProfessorProvider>
               <TaskProvider>
-                <ScheduleProvider>
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route
@@ -52,18 +51,17 @@ function App() {
                       <Route path="tasks" element={<Tasks />} />
                       <Route path="subjects" element={<Subjects />} />
                       <Route path="professors" element={<Professors />} />
-                      <Route path="schedule" element={<Schedule />} />
                       <Route path="profile" element={<Profile />} /> 
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                </ScheduleProvider>
               </TaskProvider>
             </ProfessorProvider>
           </SubjectProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
+    </MobileProvider>
   );
 }
 

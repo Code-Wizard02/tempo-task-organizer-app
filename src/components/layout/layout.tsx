@@ -17,7 +17,6 @@ export function Layout() {
     if (path === "/tasks") return "Gestión de Tareas";
     if (path === "/subjects") return "Materias";
     if (path === "/professors") return "Profesores";
-    if (path === "/schedule") return "Horario";
     if (path === "/profile") return "Mi Perfil";
     return "TaskHub";
   };

@@ -14,12 +14,12 @@ import { useMobile } from "@/hooks/use-mobile";
 export function AppSidebar() {
   const isMobile = useMobile().isMobile;
   // En móviles, iniciar con la barra lateral colapsada
-  const [isCollapsed, setIsCollapsed] = useState(!isMobile);
+  const [isCollapsed, setIsCollapsed] = useState(isMobile);
   const { user, profile } = useAuth();
   
   // Actualizar el estado cuando cambie el tamaño de la pantalla
   useEffect(() => {
-    setIsCollapsed(!isMobile);
+    setIsCollapsed(isMobile);
   }, [isMobile]);
 
   // Get initials from profile.full_name if available, or use fallback
