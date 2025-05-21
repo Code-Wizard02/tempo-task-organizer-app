@@ -8,7 +8,6 @@ export type Subject = {
   id: string;
   name: string;
   color: string;
-  credits: number;
   professor_id: string | null;
   createdAt: string;
   updatedAt: string;
@@ -57,7 +56,6 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
           id: item.id,
           name: item.name,
           color: item.color,
-          credits: item.credits || 0,
           professor_id: item.professor_id,
           createdAt: item.created_at,
           updatedAt: item.updated_at
@@ -90,7 +88,6 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
           {
             name: subject.name,
             color: subject.color,
-            credits: subject.credits,
             professor_id: subject.professor_id,
             user_id: user.id
           }
@@ -106,7 +103,6 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
           id: data[0].id,
           name: data[0].name,
           color: data[0].color,
-          credits: data[0].credits || 0,
           professor_id: data[0].professor_id,
           createdAt: data[0].created_at,
           updatedAt: data[0].updated_at
@@ -137,7 +133,6 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
       const updateData: any = {};
       if (updatedFields.name) updateData.name = updatedFields.name;
       if (updatedFields.color) updateData.color = updatedFields.color;
-      if (updatedFields.credits !== undefined) updateData.credits = updatedFields.credits;
       if (updatedFields.professor_id !== undefined) updateData.professor_id = updatedFields.professor_id;
 
       const { error } = await supabase

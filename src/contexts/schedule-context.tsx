@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/integrations/supabase/client';
+import { is } from 'date-fns/locale';
 
 // Tipos
 export type ScheduleEntry = {
@@ -41,24 +42,28 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Cargar horario desde Supabase
+  //Cargar horario desde Supabase
   useEffect(() => {
-    async function loadSchedule() {
-      if (!user) {
+    console.log('verificando usuario', user);
+    if (!user || !user.id) {
         setScheduleEntries([]);
         setIsLoading(false);
-        return;
-      }
-
+      return;
+    }
+    async function loadSchedule() {
+      if (isLoading) return;
       try {
+        console.log('Antes de setIsLoading(true)', isLoading);
         setIsLoading(true);
+        console.log('Despues de setIsLoading(true)', isLoading);
+
         const { data, error } = await supabase
           .from('schedule')
           .select('*')
           .eq('user_id', user.id)
           .order('day_of_week', { ascending: true })
           .order('start_time', { ascending: true });
-
+        setIsLoading(false);
         if (error) {
           throw error;
         }
@@ -85,12 +90,17 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           duration: 3000,
         });
       } finally {
+        console.log('Carga finalizada: isLoading FALSE', isLoading);
         setIsLoading(false);
       }
     }
 
     loadSchedule();
-  }, [user, toast]);
+  }, [user]);
+
+  useEffect(() => {
+    console.log('Estado de isLoading:', isLoading);
+  }, [isLoading]);
 
   // Añadir entrada de horario
   const addScheduleEntry = async (entry: Omit<ScheduleEntry, 'id' | 'createdAt' | 'updatedAt'>) => {

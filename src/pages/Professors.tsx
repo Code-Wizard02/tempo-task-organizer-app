@@ -109,6 +109,7 @@ export default function Professors() {
     } else {
       const newProfessor = {
         name: data.name,
+        full_name: data.name, 
         email: data.email,
         subjectIds: data.subjectIds,
       };
