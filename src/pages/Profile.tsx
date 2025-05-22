@@ -176,7 +176,7 @@ export default function Profile() {
                     <div className="absolute bottom-0 right-0">
                       <Label 
                         htmlFor="avatar-upload" 
-                        className="cursor-pointer bg-primary text-primary-foreground rounded-full p-2 shadow-md hover:bg-primary/90 transition-colors"
+                        className="cursor-pointer text-primary-foreground rounded-full p-2 shadow-md transition-colors"
                       >
                         {isUploading ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
