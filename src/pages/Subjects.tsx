@@ -192,6 +192,7 @@ export default function Subjects() {
                         )}
                       </div>
                     </TableHead>
+                    <TableHead>Color</TableHead> {/* Nueva columna */}
                     <TableHead className="cursor-pointer" onClick={() => toggleSort("professor_id")}>
                       <div className="flex items-center">
                         Profesor
@@ -204,7 +205,6 @@ export default function Subjects() {
                         )}
                       </div>
                     </TableHead>
-                    <TableHead>Color</TableHead> {/* Nueva columna */}
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
