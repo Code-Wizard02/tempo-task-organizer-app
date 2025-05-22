@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ListTodo,
   Check,
@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTasks, Task, TaskDifficulty } from "@/contexts/task-context";
 import { useSubjects } from "@/contexts/subject-context";
 import { useProfessors } from "@/contexts/professor-context";
@@ -101,6 +102,40 @@ export default function Tasks() {
 
     return matchesSearch && matchesStatus && matchesDifficulty;
   });
+
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedTask?.dueDate) return;
+
+    const interval = setInterval(() => {
+      const dueDate = new Date(
+        `${selectedTask.dueDate}T${selectedTask.dueTime || "23:59"}`
+      );
+      const now = new Date();
+      const diff = dueDate.getTime() - now.getTime();
+      if (diff <= 0) {
+        setTimeLeft("¡Tiempo agotado!");
+        clearInterval(interval);
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+
+      setTimeLeft(`${days > 0 ? `${days}d ` : ""}${hours}h ${minutes}m`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [selectedTask]);
+
+  const openTaskDetails = (task: Task) => {
+    setSelectedTask(task);
+    setIsDetailsDialogOpen(true);
+  };
 
   const handleAddTask = () => {
     addTask({
@@ -281,187 +316,202 @@ export default function Tasks() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Tareas</CardTitle>
-          <CardDescription>
-            Visualiza y gestiona todas tus tareas académicas.
-          </CardDescription>
+      {/* Card para filtros */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Filtros y búsqueda</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <Input
-                  placeholder="Buscar tareas..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:w-[360px]">
-                <Select
-                  value={filterStatus}
-                  onValueChange={(value) => setFilterStatus(value as any)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="pending">Pendientes</SelectItem>
-                    <SelectItem value="completed">Completadas</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={filterDifficulty}
-                  onValueChange={(value) => setFilterDifficulty(value as any)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Dificultad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="easy">Fácil</SelectItem>
-                    <SelectItem value="medium">Media</SelectItem>
-                    <SelectItem value="hard">Difícil</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Búsqueda */}
+            <div className="flex relative">
+              <Input
+                placeholder="Buscar por título o descripción..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
 
-            <div className="border rounded-lg">
-              {filteredTasks.length === 0 ? (
-                <div className="py-12 text-center">
-                  <ListTodo className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-2 text-lg font-semibold">No hay tareas</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {searchTerm ||
-                    filterStatus !== "all" ||
-                    filterDifficulty !== "all"
-                      ? "No se encontraron tareas con los filtros aplicados"
-                      : "Añade tu primera tarea para comenzar"}
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Título</TableHead>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead className="text-center">
-                          Dificultad
-                        </TableHead>
-                        <TableHead className="text-center">Materia</TableHead>
-                        <TableHead className="text-center">Profesor</TableHead>
-                        <TableHead className="text-center">Estado</TableHead>
-                        <TableHead className="text-center">Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredTasks.map((task) => {
-                        const subject = subjects.find(
-                          (s) => s.id === task.subjectId
-                        );
-                        const professor = professors.find(
-                          (p) => p.id === task.professorId
-                        );
-                        const isOverdue = isTaskOverdue(
-                          task.dueDate,
-                          task.dueTime,
-                          task.completed
-                        );
+            {/* Filtro por estado */}
+            <Select
+              value={filterStatus}
+              onValueChange={(value) => setFilterStatus(value as any)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="pending">Pendientes</SelectItem>
+                <SelectItem value="completed">Completadas</SelectItem>
+              </SelectContent>
+            </Select>
 
-                        return (
-                          <TableRow
-                            key={task.id}
+            {/* Filtro por dificultad */}
+            <Select
+              value={filterDifficulty}
+              onValueChange={(value) => setFilterDifficulty(value as any)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Dificultad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="easy">Fácil</SelectItem>
+                <SelectItem value="medium">Media</SelectItem>
+                <SelectItem value="hard">Difícil</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Card para la tabla */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Tareas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredTasks.length === 0 ? (
+            <div className="py-8 text-center">
+              <ListTodo className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-2 text-lg font-semibold">No hay tareas</h3>
+              <p className="text-sm text-muted-foreground">
+                {searchTerm ||
+                filterStatus !== "all" ||
+                filterDifficulty !== "all"
+                  ? "No se encontraron tareas con los filtros aplicados"
+                  : "Añade tu primera tarea para comenzar"}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead></TableHead>
+                    <TableHead>Título</TableHead>
+                    <TableHead className="text-center">Dificultad</TableHead>
+                    <TableHead className="text-center">Materias</TableHead>
+                    <TableHead className="text-center">Estado</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTasks.map((task) => {
+                    const subject = subjects.find(
+                      (s) => s.id === task.subjectId
+                    );
+                    const isOverdue = isTaskOverdue(
+                      task.dueDate,
+                      task.dueTime,
+                      task.completed
+                    );
+
+                    return (
+                      <TableRow
+                        key={task.id}
+                        className={cn(
+                          "hover:bg-gray-100 dark:hover:bg-gray-700",
+                          task.completed && "bg-gray-50 dark:bg-gray-800"
+                        )}
+                        onClick={() => {
+                          openTaskDetails(task);
+                        }}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={task.completed}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Evita que el evento de clic en la fila se dispare
+                            }}
+                            onCheckedChange={() => {
+                              toggleTaskStatus(task.id);
+                            }}
+                          />
+                        </TableCell>
+
+                        {/* Título */}
+                        <TableCell>
+                          <div
                             className={cn(
-                              "hover:bg-gray-100 dark:hover:bg-gray-700",
-                              task.completed && "bg-gray-50 dark:bg-gray-800"
+                              task.completed &&
+                                "line-through text-muted-foreground"
                             )}
                           >
-                            {/* Título */}
-                            <TableCell>
-                              <div
-                                className={cn(
-                                  task.completed &&
-                                    "line-through text-muted-foreground"
-                                )}
-                              >
-                                {task.title}
-                              </div>
-                            </TableCell>
+                            {task.title}
+                          </div>
+                        </TableCell>
 
-                            {/* Descripción */}
-                            <TableCell className="text-sm text-gray-600 dark:text-gray-400">
-                              {task.description || "Sin descripción"}
-                            </TableCell>
+                        {/* Dificultad */}
+                        <TableCell className="text-center">
+                          {getDifficultyBadge(task.difficulty)}
+                        </TableCell>
 
-                            {/* Dificultad */}
-                            <TableCell className="text-center">
-                              {getDifficultyBadge(task.difficulty)}
-                            </TableCell>
+                        {/* Materia */}
+                        <TableCell className="text-center">
+                          {subject ? (
+                            <span
+                              className="inline-block px-2 py-1 rounded-md text-xs"
+                              style={{
+                                backgroundColor: subject.color,
+                                color: "#fff",
+                              }}
+                            >
+                              {subject.name}
+                            </span>
+                          ) : (
+                            "Sin materia"
+                          )}
+                        </TableCell>
 
-                            {/* Materia */}
-                            <TableCell className="text-center">
-                              <Badge variant="outline">
-                                {subject?.name || "Sin materia"}
-                              </Badge>
-                            </TableCell>
+                        {/* Estado */}
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center">
+                            {getStatusIcon(task.completed, isOverdue)}
+                            <span
+                              className={cn(
+                                "ml-2 text-sm",
+                                isOverdue && "text-destructive font-medium"
+                              )}
+                            >
+                              {formatDateTime(task.dueDate, task.dueTime)}
+                            </span>
+                          </div>
+                        </TableCell>
 
-                            {/* Profesor */}
-                            <TableCell className="text-center">
-                              <Badge
-                                variant="outline"
-                                className="bg-secondary/50"
-                              >
-                                {professor?.name || "Sin profesor"}
-                              </Badge>
-                            </TableCell>
-
-                            {/* Estado */}
-                            <TableCell className="text-center">
-                              <div className="flex items-center justify-center">
-                                {getStatusIcon(task.completed, isOverdue)}
-                                <span
-                                  className={cn(
-                                    "ml-2 text-sm",
-                                    isOverdue && "text-destructive font-medium"
-                                  )}
-                                >
-                                  {formatDateTime(task.dueDate, task.dueTime)}
-                                </span>
-                              </div>
-                            </TableCell>
-
-                            {/* Acciones */}
-                            <TableCell className="text-center">
-                              <div className="flex items-center justify-center gap-2">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => openEditDialog(task)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => openDeleteDialog(task)}
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                        {/* Acciones */}
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Evita que el evento de clic en la fila se dispare
+                                openEditDialog(task);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Evita que el evento de clic en la fila se dispare
+                                openDeleteDialog(task);
+                              }}
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -846,6 +896,110 @@ export default function Tasks() {
             </Button>
             <Button variant="destructive" onClick={handleDeleteTask}>
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para ver detalles de la tarea */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Detalles de la tarea</DialogTitle>
+          </DialogHeader>
+          {selectedTask && (
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
+              {/* Título */}
+              <Card className="p-4 col-span-2 sm:col-span-2">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Título
+                </p>
+                <p className="text-lg font-semibold">{selectedTask.title}</p>
+              </Card>
+
+              {/* Descripción */}
+              <Card className="p-4 col-span-2 sm:col-span-2">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Descripción
+                </p>
+                <p className="text-base">
+                  {selectedTask.description || "Sin descripción"}
+                </p>
+              </Card>
+
+              {/* Fecha límite */}
+              {/* <Card className="p-4">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Fecha límite
+                </p>
+                <p className="text-base">
+                  {formatDateTime(selectedTask.dueDate, selectedTask.dueTime)}
+                </p>
+              </Card> */}
+              <Card className="p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Tiempo restante */}
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Tiempo restante
+                    </p>
+                    <p className="text-base">{timeLeft || "Calculando..."}</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Dificultad */}
+              <Card className="p-4">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Dificultad
+                </p>
+                <Badge
+                  className={cn(
+                    selectedTask.difficulty === "easy"
+                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                      : selectedTask.difficulty === "medium"
+                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                      : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                  )}
+                >
+                  {selectedTask.difficulty === "easy"
+                    ? "Fácil"
+                    : selectedTask.difficulty === "medium"
+                    ? "Media"
+                    : "Difícil"}
+                </Badge>
+              </Card>
+
+              {/* Materia */}
+              <Card className="p-4 sm:col-span-2">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Materia
+                </p>
+                <p className="text-base">
+                  {subjects.find((s) => s.id === selectedTask.subjectId)
+                    ?.name || "Sin materia"}
+                </p>
+              </Card>
+
+              {/* Profesor */}
+              <Card className="p-4 sm:col-span-2">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Profesor
+                </p>
+                <p className="text-base">
+                  {professors.find((p) => p.id === selectedTask.professorId)
+                    ?.name || "Sin profesor"}
+                </p>
+              </Card>
+            </div>
+          )}
+          <DialogFooter className="mt-6">
+            <Button
+              variant="outline"
+              onClick={() => setIsDetailsDialogOpen(false)}
+              className="w-full sm:w-auto"
+            >
+              Cerrar
             </Button>
           </DialogFooter>
         </DialogContent>
