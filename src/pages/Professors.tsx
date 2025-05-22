@@ -123,9 +123,14 @@ export default function Professors() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Profesores</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Profesores</h1>
+          <p className="text-muted-foreground">
+            Administra y organiza todos los profesores aquí
+          </p>
+        </div>
         <Button onClick={openCreateDialog}>
           <Plus className="mr-2 h-4 w-4" /> Agregar Profesor
         </Button>
@@ -156,7 +161,6 @@ export default function Professors() {
                 <SelectValue placeholder="Filtrar por materia" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas las materias</SelectItem>
                 {subjects.map(subject => (
                   <SelectItem key={subject.id} value={subject.id}>
                     <div className="flex items-center">
@@ -167,6 +171,18 @@ export default function Professors() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm("");
+                  setSubjectFilter("");
+                }}
+              >
+                Limpiar Filtros
+              </Button>
+            </div>
+
           </div>
         </CardContent>
       </Card>

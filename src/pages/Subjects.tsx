@@ -115,9 +115,14 @@ export default function Subjects() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Materias</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+        <h2 className="text-2xl font-bold tracking-tight">Gestión de Materias</h2>
+        <p className="text-muted-foreground">
+          Aquí puedes agregar, editar y eliminar materias.
+        </p>
+      </div>
         <Button onClick={openCreateDialog}>
           <Plus className="mr-2 h-4 w-4" /> Agregar Materia
         </Button>
@@ -154,7 +159,7 @@ export default function Subjects() {
             </Select>
             <div className="flex items-center">
               <Button variant="outline" onClick={() => { setSearchTerm(""); setProfessorFilter(""); }}>
-                Limpiar filtros
+                Limpiar Filtros
               </Button>
             </div>
           </div>
