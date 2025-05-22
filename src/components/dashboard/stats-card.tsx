@@ -1,11 +1,12 @@
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { ReactNode } from "react";
 
 interface StatsCardProps {
   title: string;
   value: string | number;
-  description?: string;
+  description?: string | ReactNode;
   icon: React.ReactNode;
   className?: string;
 }

@@ -28,12 +28,13 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatsCard
           title="Total Tareas"
           value={totalTasks}
           icon={<ListTodo className="w-full h-full" />}
           description="Número total de tareas registradas"
+          className="hidden sm:block"
         />
         <StatsCard
           title="Tareas Completadas"
