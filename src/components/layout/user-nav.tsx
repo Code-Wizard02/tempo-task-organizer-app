@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 export function UserNav() {
   const { user, profile, signOut } = useAuth();
@@ -32,9 +32,13 @@ export function UserNav() {
   const pendingTasks = getPendingTasks();
   const hasTasks = overdueTasks.length > 0 || pendingTasks.length > 0;
 
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
   return (
     <div className="flex items-center gap-2">
-      <Popover>
+      <Popover
+        open={isPopoverOpen}
+        onOpenChange={setIsPopoverOpen}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
@@ -111,7 +115,7 @@ export function UserNav() {
           </div>
           <div className="p-2 border-t">
             <Link to="/tasks" className="block w-full">
-              <Button variant="outline" className="w-full">Ver todas las tareas</Button>
+              <Button variant="outline" className="w-full" onClick={()=> setIsPopoverOpen(false)}>Ver todas las tareas</Button>
             </Link>
           </div>
         </PopoverContent>

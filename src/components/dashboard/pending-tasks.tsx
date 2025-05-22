@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { formatDistance } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
+import { Button } from "../ui/button";
 
 export function PendingTasks() {
   const { getPendingTasks } = useTasks();
@@ -70,9 +72,12 @@ export function PendingTasks() {
           
           {pendingTasks.length > 0 && (
             <div className="pt-2">
-              <a href="/tasks" className="text-sm text-primary hover:underline">
+              {/* <a href="/tasks" className="text-sm text-primary hover:underline">
                 Ver todas las tareas
-              </a>
+              </a> */}
+              <Link to="/tasks" className="block w-full">
+                <Button variant="outline" className="w-full">Ver todas las tareas</Button>
+              </Link>
             </div>
           )}
         </div>
