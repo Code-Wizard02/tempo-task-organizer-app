@@ -14,6 +14,7 @@ import { toZonedTime } from "date-fns-tz";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Button } from "../ui/button";
+import { useEffect, useState } from "react";
 
 export function PendingTasks() {
   const { getPendingTasks } = useTasks();
@@ -62,6 +63,32 @@ export function PendingTasks() {
                 }
               );
 
+              const [timeLeft, setTimeLeft] = useState<string | null>(null);
+
+              useEffect(() => {
+                const interval = setInterval(() => {
+                  const now = new Date();
+                  const diff = dueDateLocal.getTime() - now.getTime();
+
+                  if (diff <= 0) {
+                    setTimeLeft("¡Tiempo agotado!");
+                    clearInterval(interval);
+                    return;
+                  }
+
+                  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                  const minutes = Math.floor((diff / (1000 * 60)) % 60);
+                  
+
+                  setTimeLeft(
+                    `${days > 0 ? `${days}d ` : ""}${hours}h ${minutes}m`
+                  );
+                }, 1000);
+
+                return () => clearInterval(interval);
+              }, [dueDateLocal]);
+
               return (
                 <div key={task.id} className="flex items-center space-x-4">
                   <div className="flex-1 space-y-1">
@@ -79,7 +106,7 @@ export function PendingTasks() {
                     </div>
                   </div>
                   <div>
-                    <Badge
+                    {/* <Badge
                       variant="outline"
                       className={cn(
                         daysUntilDue <= 0
@@ -94,6 +121,19 @@ export function PendingTasks() {
                       {daysUntilDue <= 0
                         ? "Vencida"
                         : timeUntilDue.replace("hace", "En")}
+                    </Badge> */}
+
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        timeLeft === "¡Tiempo agotado!"
+                          ? "text-destructive border-destructive"
+                          : daysUntilDue <= 1
+                          ? "text-yellow-600 border-yellow-600"
+                          : "text-green-600 border-green-600"
+                      )}
+                    >
+                      {timeLeft || "Calculando..."}
                     </Badge>
                   </div>
                 </div>
