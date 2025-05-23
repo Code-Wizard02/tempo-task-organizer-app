@@ -47,3 +47,15 @@ export interface Professor {
   updated_at?: string;
 }
 
+export interface ScheduleEntry {
+  id: string;
+  subject_id: string;
+  start_time: string;
+  end_time: string;
+  days_of_week: string[];
+  location?: string;
+  notes?: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}

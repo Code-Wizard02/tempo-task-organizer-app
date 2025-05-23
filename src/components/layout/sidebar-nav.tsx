@@ -6,7 +6,8 @@ import {
   ListTodo,
   BookOpen,
   UserRound,
-  LayoutDashboard
+  LayoutDashboard,
+  Calendar
 } from "lucide-react";
 
 interface SidebarNavProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -33,6 +34,11 @@ const sidebarItems = [
     title: "Profesores",
     href: "/professors",
     icon: UserRound,
+  },
+  {
+    title: "Horario",
+    href: "/schedule",
+    icon: Calendar,
   },
 ];
 

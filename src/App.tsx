@@ -18,6 +18,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Profile from "@/pages/Profile";
 import { MobileProvider } from "./hooks/use-mobile";
 import { useEffect, useState } from "react";
+import { ScheduleProvider } from "./contexts/schedule-context";
+import Schedule from "./pages/Schedule";
 
 function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -59,52 +61,55 @@ function App() {
             <SubjectProvider>
               <ProfessorProvider>
                 <TaskProvider>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route
-                      path="/login"
-                      element={
-                        <AuthLayout title="Iniciar Sesión">
-                          <Login />
-                        </AuthLayout>
-                      }
-                    />
-                    <Route
-                      path="/register"
-                      element={
-                        <AuthLayout title="Crear Cuenta">
-                          <Register />
-                        </AuthLayout>
-                      }
-                    />
-                    <Route path="/" element={<Layout />}>
-                      <Route path="dashboard" element={<Dashboard />} />
-                      <Route path="tasks" element={<Tasks />} />
-                      <Route path="subjects" element={<Subjects />} />
-                      <Route path="professors" element={<Professors />} />
-                      <Route path="profile" element={<Profile />} />
-                    </Route>
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                  {/* Botón para instalar la PWA */}
-                  {deferredPrompt && (
-                    <button
-                      onClick={handleInstallClick}
-                      style={{
-                        position: "fixed",
-                        bottom: "20px",
-                        right: "20px",
-                        padding: "10px 20px",
-                        backgroundColor: "#1e90ff",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "5px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Instalar Aplicación
-                    </button>
-                  )}
+                  <ScheduleProvider>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route
+                        path="/login"
+                        element={
+                          <AuthLayout title="Iniciar Sesión">
+                            <Login />
+                          </AuthLayout>
+                        }
+                      />
+                      <Route
+                        path="/register"
+                        element={
+                          <AuthLayout title="Crear Cuenta">
+                            <Register />
+                          </AuthLayout>
+                        }
+                      />
+                      <Route path="/" element={<Layout />}>
+                        <Route path="dashboard" element={<Dashboard />} />
+                        <Route path="tasks" element={<Tasks />} />
+                        <Route path="subjects" element={<Subjects />} />
+                        <Route path="professors" element={<Professors />} />
+                        <Route path="profile" element={<Profile />} />
+                        <Route path="schedule" element={<Schedule />} />
+                      </Route>
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                    {/* Botón para instalar la PWA */}
+                    {deferredPrompt && (
+                      <button
+                        onClick={handleInstallClick}
+                        style={{
+                          position: "fixed",
+                          bottom: "20px",
+                          right: "20px",
+                          padding: "10px 20px",
+                          backgroundColor: "#1e90ff",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Instalar Aplicación
+                      </button>
+                    )}
+                  </ScheduleProvider>
                 </TaskProvider>
               </ProfessorProvider>
             </SubjectProvider>

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/contexts/auth-context';
@@ -9,6 +10,7 @@ export type Subject = {
   name: string;
   color: string;
   professor_id: string | null;
+  description?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -57,6 +59,7 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
           name: item.name,
           color: item.color,
           professor_id: item.professor_id,
+          description: item.description,
           createdAt: item.created_at,
           updatedAt: item.updated_at
         }));
@@ -89,6 +92,7 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
             name: subject.name,
             color: subject.color,
             professor_id: subject.professor_id,
+            description: subject.description,
             user_id: user.id
           }
         ])
@@ -104,6 +108,7 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
           name: data[0].name,
           color: data[0].color,
           professor_id: data[0].professor_id,
+          description: data[0].description,
           createdAt: data[0].created_at,
           updatedAt: data[0].updated_at
         };
@@ -134,6 +139,7 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
       if (updatedFields.name) updateData.name = updatedFields.name;
       if (updatedFields.color) updateData.color = updatedFields.color;
       if (updatedFields.professor_id !== undefined) updateData.professor_id = updatedFields.professor_id;
+      if (updatedFields.description !== undefined) updateData.description = updatedFields.description;
 
       const { error } = await supabase
         .from('subjects')

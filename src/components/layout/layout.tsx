@@ -18,6 +18,7 @@ export function Layout() {
     if (path === "/subjects") return "Materias";
     if (path === "/professors") return "Profesores";
     if (path === "/profile") return "Mi Perfil";
+    if (path === "/schedule") return "Mi Horario";
     return "TaskHub";
   };
 
