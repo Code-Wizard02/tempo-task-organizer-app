@@ -1,48 +1,35 @@
 
-import React from 'react';
-import { Bell, Menu } from "lucide-react";
+// Update the header component to use the useMobile hook correctly
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { UserNav } from "./user-nav";
 import { useMobile } from "@/hooks/use-mobile";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { useTasks } from "@/contexts/task-context";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { ThemeToggle } from '../theme-toggle';
+import { Menu } from "lucide-react";
+import { UserNav } from "@/components/layout/user-nav";
+import { ThemeToggleMenu } from "@/components/theme-toggle-menu";
 
-interface HeaderProps {
+type HeaderProps = {
   title: string;
-}
+  toggleSidebar?: () => void;
+};
 
-export function Header({ title }: HeaderProps) {
-  const { isMobile, toggleSidebar } = useMobile();
-  const { tasks } = useTasks();
-  
-  // Filtrar tareas que vencen en el próximo día
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(23, 59, 59, 999);
-  
-  const today = new Date();
-  
-  const upcomingTasks = tasks.filter(task => {
-    const dueDate = new Date(task.dueDate);
-    return !task.completed && dueDate <= tomorrow && dueDate >= today;
-  });
+export function Header({ title, toggleSidebar }: HeaderProps) {
+  const { isMobile } = useMobile();
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4">
-      <div className="flex items-center">
-        <h1 className="text-xl font-semibold">{title}</h1>
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+      {isMobile && toggleSidebar && (
+        <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle Menu</span>
+        </Button>
+      )}
+
+      <div className="flex-1">
+        <h1 className="text-xl font-semibold md:text-2xl">{title}</h1>
       </div>
-      <div className="flex items-center gap-4">
-        <ThemeToggle/>
+
+      <div className="flex items-center gap-2">
+        <ThemeToggleMenu />
         <UserNav />
       </div>
     </header>

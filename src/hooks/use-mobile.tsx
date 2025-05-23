@@ -27,6 +27,7 @@ export function useMobile() {
   return { isMobile };
 }
 
+// This component is here for compatibility but doesn't do anything special
 export function MobileProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
