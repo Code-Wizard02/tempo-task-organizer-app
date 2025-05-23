@@ -24,7 +24,6 @@ export function AuthLayout({ children, title }: AuthLayoutProps) {
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
-
   return (
     <div className="flex min-h-screen flex-col">
       <div className="flex flex-1 flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
