@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { Calendar, Views, momentLocalizer } from 'react-big-calendar';
+import { Calendar, momentLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parse, startOfWeek, getDay, addMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -25,16 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useSubjects } from '@/contexts/subject-context';
 import { useSchedule } from '@/contexts/schedule-context';
 import { useMobile } from '@/hooks/use-mobile';
 import type { Subject, ScheduleEntry as ScheduleEntryType } from '@/types/app-types';
+import { MultiSelectDays, type DayOption } from '@/components/ui/multi-select-days';
+import { Plus } from 'lucide-react';
 
 // Define the days of the week
-const daysOfWeek = [
+const daysOfWeek: DayOption[] = [
   { id: "monday", label: "Lunes" },
   { id: "tuesday", label: "Martes" },
   { id: "wednesday", label: "Miércoles" },
@@ -62,6 +63,47 @@ type CalendarEvent = {
 // Set up moment locale
 moment.locale('es');
 const localizer = momentLocalizer(moment);
+
+// Custom calendar components for mobile
+const CustomEvent = ({ event }: { event: CalendarEvent }) => {
+  const { isMobile } = useMobile();
+  
+  if (isMobile) {
+    return (
+      <div 
+        className="rounded-md p-2 text-white overflow-hidden h-full"
+        style={{ backgroundColor: event.resource.subjectColor }}
+      >
+        <div className="font-bold text-sm truncate">{event.title}</div>
+        <div className="text-xs opacity-90">
+          {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
+        </div>
+        {event.resource.location && (
+          <div className="text-xs truncate mt-1 opacity-80">
+            {event.resource.location}
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  return (
+    <div 
+      className="rounded-md p-1.5 text-white overflow-hidden h-full"
+      style={{ backgroundColor: event.resource.subjectColor }}
+    >
+      <div className="font-bold truncate">{event.title}</div>
+      <div className="text-xs">
+        {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
+      </div>
+      {event.resource.location && (
+        <div className="text-xs truncate mt-0.5 opacity-80">
+          {event.resource.location}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Schedule = () => {
   const { isMobile } = useMobile();
@@ -102,22 +144,11 @@ const Schedule = () => {
     });
   };
 
-  // Handle day checkbox changes
-  const handleDayToggle = (day: string) => {
-    setFormData(prev => {
-      const days = [...prev.days_of_week];
-      const index = days.indexOf(day);
-      
-      if (index === -1) {
-        days.push(day);
-      } else {
-        days.splice(index, 1);
-      }
-      
-      return {
-        ...prev,
-        days_of_week: days
-      };
+  // Handle day selections
+  const handleDaysChange = (days: string[]) => {
+    setFormData({
+      ...formData,
+      days_of_week: days
     });
   };
 
@@ -274,12 +305,12 @@ const Schedule = () => {
   const eventStyleGetter = useCallback((event: CalendarEvent) => {
     return {
       style: {
-        backgroundColor: event.resource.subjectColor,
+        backgroundColor: 'transparent',
         borderRadius: '4px',
-        color: '#fff',
         border: 'none',
         display: 'block',
-        fontWeight: 'bold'
+        padding: 0,
+        height: '100%'
       }
     };
   }, []);
@@ -298,13 +329,27 @@ const Schedule = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Mi Horario</h1>
         <Button onClick={() => setIsAddDialogOpen(true)}>
-          Agregar Clase
+          <Plus className="mr-1 h-4 w-4" /> Agregar Clase
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="h-[calc(100vh-220px)]">
+      <Card className="shadow-lg border-t-4 border-t-brand-blue">
+        <CardContent className={`p-0 ${isMobile ? 'pb-4' : 'pb-0'}`}>
+          <div className="bg-blue-50 dark:bg-slate-800/20 p-4 mb-2 flex justify-between items-center">
+            <h2 className="text-lg font-medium">
+              {isMobile 
+                ? format(new Date(), 'EEEE, d MMMM', { locale: es }) 
+                : 'Semana del ' + format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'd MMMM', { locale: es })}
+            </h2>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm">Hoy</Button>
+              <div className="flex border rounded">
+                <Button variant="ghost" size="icon" className="h-8 w-8">◀</Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8">▶</Button>
+              </div>
+            </div>
+          </div>
+          <div className="h-[calc(100vh-250px)] px-2">
             <Calendar
               localizer={localizer}
               events={events}
@@ -317,6 +362,9 @@ const Schedule = () => {
               eventPropGetter={eventStyleGetter}
               onSelectEvent={handleSelectEvent}
               culture="es"
+              components={{
+                event: CustomEvent as any,
+              }}
               formats={{
                 timeGutterFormat: 'HH:mm',
                 eventTimeRangeFormat: ({ start, end }) => {
@@ -324,6 +372,7 @@ const Schedule = () => {
                 },
                 dayFormat: (date) => format(date, 'EEE', { locale: es }),
               }}
+              className="custom-calendar"
             />
           </div>
         </CardContent>
@@ -388,25 +437,13 @@ const Schedule = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Días de la semana</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {daysOfWeek.map((day) => (
-                    <div key={day.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`day-${day.id}`}
-                        checked={formData.days_of_week.includes(day.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            handleDayToggle(day.id);
-                          } else {
-                            handleDayToggle(day.id);
-                          }
-                        }}
-                      />
-                      <Label htmlFor={`day-${day.id}`}>{day.label}</Label>
-                    </div>
-                  ))}
-                </div>
+                <Label htmlFor="days">Días de la semana</Label>
+                <MultiSelectDays
+                  options={daysOfWeek}
+                  selected={formData.days_of_week}
+                  onChange={handleDaysChange}
+                  placeholder="Seleccionar días..."
+                />
               </div>
 
               <div className="space-y-2">
@@ -505,25 +542,13 @@ const Schedule = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Días de la semana</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {daysOfWeek.map((day) => (
-                    <div key={day.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`edit-day-${day.id}`}
-                        checked={formData.days_of_week.includes(day.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            handleDayToggle(day.id);
-                          } else {
-                            handleDayToggle(day.id);
-                          }
-                        }}
-                      />
-                      <Label htmlFor={`edit-day-${day.id}`}>{day.label}</Label>
-                    </div>
-                  ))}
-                </div>
+                <Label htmlFor="days">Días de la semana</Label>
+                <MultiSelectDays
+                  options={daysOfWeek}
+                  selected={formData.days_of_week}
+                  onChange={handleDaysChange}
+                  placeholder="Seleccionar días..."
+                />
               </div>
 
               <div className="space-y-2">
@@ -567,6 +592,60 @@ const Schedule = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <style jsx global>{`
+        .custom-calendar {
+          border: none !important;
+        }
+        .rbc-header {
+          padding: 10px !important;
+          font-weight: 600 !important;
+          text-transform: uppercase !important;
+          font-size: 12px !important;
+          background-color: #f9fafc !important;
+          border-bottom: 1px solid #e5e7eb !important;
+        }
+        .dark .rbc-header {
+          background-color: rgba(30, 41, 59, 0.2) !important;
+        }
+        .rbc-day-bg {
+          background-color: white !important;
+        }
+        .dark .rbc-day-bg {
+          background-color: rgba(30, 41, 59, 0.05) !important;
+        }
+        .rbc-event {
+          padding: 0 !important;
+        }
+        .rbc-today {
+          background-color: rgba(59, 130, 246, 0.05) !important;
+        }
+        .dark .rbc-today {
+          background-color: rgba(59, 130, 246, 0.15) !important;
+        }
+        .rbc-time-slot {
+          border-top: 1px solid #f1f5f9 !important;
+        }
+        .dark .rbc-time-slot {
+          border-top: 1px solid rgba(148, 163, 184, 0.1) !important;
+        }
+        .rbc-timeslot-group {
+          border-bottom: 1px solid #e5e7eb !important;
+        }
+        .dark .rbc-timeslot-group {
+          border-bottom: 1px solid rgba(148, 163, 184, 0.2) !important;
+        }
+        @media (max-width: 768px) {
+          .rbc-toolbar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            margin-bottom: 10px !important;
+          }
+          .rbc-toolbar-label {
+            margin: 8px 0 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
