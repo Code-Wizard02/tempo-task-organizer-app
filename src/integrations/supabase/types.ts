@@ -102,10 +102,58 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_entries: {
+        Row: {
+          created_at: string
+          days_of_week: string[]
+          end_time: string
+          id: string
+          location: string | null
+          notes: string | null
+          start_time: string
+          subject_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          days_of_week: string[]
+          end_time: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          start_time: string
+          subject_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          days_of_week?: string[]
+          end_time?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          start_time?: string
+          subject_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_entries_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           color: string
           created_at: string
+          description: string | null
           id: string
           name: string
           professor_id: string | null
@@ -115,6 +163,7 @@ export type Database = {
         Insert: {
           color: string
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           professor_id?: string | null
@@ -124,6 +173,7 @@ export type Database = {
         Update: {
           color?: string
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           professor_id?: string | null

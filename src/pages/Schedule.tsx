@@ -1,9 +1,11 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { Calendar, Views, DateLocalizer, momentLocalizer } from 'react-big-calendar';
+import { Calendar, Views, momentLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parse, startOfWeek, getDay, addMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
+import moment from 'moment';
+import 'moment/locale/es';
 import { 
   Dialog,
   DialogContent,
@@ -11,7 +13,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +29,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useSubjects } from '@/contexts/subject-context';
-import { useSchedule, ScheduleEntry } from '@/contexts/schedule-context';
+import { useSchedule } from '@/contexts/schedule-context';
 import { useMobile } from '@/hooks/use-mobile';
+import type { Subject, ScheduleEntry as ScheduleEntryType } from '@/types/app-types';
 
 // Define the days of the week
 const daysOfWeek = [
@@ -56,6 +58,10 @@ type CalendarEvent = {
     scheduleEntryId: string;
   };
 };
+
+// Set up moment locale
+moment.locale('es');
+const localizer = momentLocalizer(moment);
 
 const Schedule = () => {
   const { isMobile } = useMobile();
@@ -252,7 +258,7 @@ const Schedule = () => {
           end: endDate,
           resource: {
             subjectId: subject.id,
-            subjectColor: subject.color,
+            subjectColor: subject.color || '#3B82F6',
             location: entry.location,
             notes: entry.notes,
             scheduleEntryId: entry.id
@@ -300,10 +306,7 @@ const Schedule = () => {
         <CardContent className="p-4">
           <div className="h-[calc(100vh-220px)]">
             <Calendar
-              localizer={momentLocalizer((m) => {
-                m.locale('es');
-                return m;
-              })}
+              localizer={localizer}
               events={events}
               startAccessor="start"
               endAccessor="end"

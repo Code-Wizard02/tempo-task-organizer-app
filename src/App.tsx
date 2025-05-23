@@ -1,3 +1,4 @@
+
 // Add Profile route to the App component
 import { Routes, Route, BrowserRouter } from "react-router-dom";
 import { Layout } from "@/components/layout/layout";

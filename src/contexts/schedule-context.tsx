@@ -3,25 +3,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/integrations/supabase/client';
-
-// Types
-export type ScheduleEntry = {
-  id: string;
-  subject_id: string;
-  start_time: string; // Format: "HH:MM"
-  end_time: string; // Format: "HH:MM"
-  days_of_week: string[]; // e.g. ["monday", "wednesday", "friday"]
-  location?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-};
+import type { ScheduleEntry } from '@/types/app-types';
 
 type ScheduleContextType = {
   scheduleEntries: ScheduleEntry[];
   isLoading: boolean;
-  addScheduleEntry: (entry: Omit<ScheduleEntry, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
-  updateScheduleEntry: (id: string, entry: Partial<ScheduleEntry>) => Promise<void>;
+  addScheduleEntry: (entry: Omit<ScheduleEntry, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => Promise<void>;
+  updateScheduleEntry: (id: string, entry: Partial<Omit<ScheduleEntry, 'id' | 'created_at' | 'updated_at' | 'user_id'>>) => Promise<void>;
   deleteScheduleEntry: (id: string) => Promise<void>;
   getScheduleEntry: (id: string) => ScheduleEntry | undefined;
   getEntriesBySubjectId: (subjectId: string) => ScheduleEntry[];
@@ -58,19 +46,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
 
-      const formattedEntries: ScheduleEntry[] = data.map((item) => ({
-        id: item.id,
-        subject_id: item.subject_id,
-        start_time: item.start_time,
-        end_time: item.end_time,
-        days_of_week: item.days_of_week,
-        location: item.location,
-        notes: item.notes,
-        created_at: item.created_at,
-        updated_at: item.updated_at
-      }));
-
-      setScheduleEntries(formattedEntries);
+      setScheduleEntries(data as ScheduleEntry[]);
     } catch (error) {
       console.error('Error loading schedule entries:', error);
       toast({
@@ -86,7 +62,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   // Initial load
   useEffect(() => {
     loadScheduleEntries();
-  }, [user, toast]);
+  }, [user]);
 
   // Refresh entries
   const refreshEntries = async () => {
@@ -94,7 +70,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Add schedule entry
-  const addScheduleEntry = async (entry: Omit<ScheduleEntry, 'id' | 'created_at' | 'updated_at'>) => {
+  const addScheduleEntry = async (entry: Omit<ScheduleEntry, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     if (!user) return;
     
     try {
@@ -113,18 +89,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data && data[0]) {
-        const newEntry: ScheduleEntry = {
-          id: data[0].id,
-          subject_id: data[0].subject_id,
-          start_time: data[0].start_time,
-          end_time: data[0].end_time,
-          days_of_week: data[0].days_of_week,
-          location: data[0].location,
-          notes: data[0].notes,
-          created_at: data[0].created_at,
-          updated_at: data[0].updated_at
-        };
-        
+        const newEntry = data[0] as ScheduleEntry;
         setScheduleEntries([newEntry, ...scheduleEntries]);
         
         toast({
@@ -143,7 +108,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Update schedule entry
-  const updateScheduleEntry = async (id: string, updatedFields: Partial<ScheduleEntry>) => {
+  const updateScheduleEntry = async (id: string, updatedFields: Partial<Omit<ScheduleEntry, 'id' | 'created_at' | 'updated_at' | 'user_id'>>) => {
     if (!user) return;
     
     try {
