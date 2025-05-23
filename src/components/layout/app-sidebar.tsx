@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { useMobile } from "@/hooks/use-mobile";
 
 export function AppSidebar() {
-  const isMobile = useMobile().isMobile;
+  const { isMobile } = useMobile();
   // En móviles, iniciar con la barra lateral colapsada
   const [isCollapsed, setIsCollapsed] = useState(isMobile);
   const { user, profile } = useAuth();

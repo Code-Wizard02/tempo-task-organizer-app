@@ -1,38 +1,28 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { Calendar, momentLocalizer } from 'react-big-calendar';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { format, parse, startOfWeek, getDay, addMinutes } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { format, parse, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import moment from 'moment';
-import 'moment/locale/es';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { CalendarIcon, Plus, Trash2, Clock, MapPin, FileText } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle 
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
 import { useSubjects } from '@/contexts/subject-context';
 import { useSchedule } from '@/contexts/schedule-context';
 import { useMobile } from '@/hooks/use-mobile';
-import type { Subject, ScheduleEntry as ScheduleEntryType } from '@/types/app-types';
+import { Separator } from '@/components/ui/separator';
 import { MultiSelectDays, type DayOption } from '@/components/ui/multi-select-days';
-import { Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Define the days of the week
 const daysOfWeek: DayOption[] = [
@@ -45,60 +35,71 @@ const daysOfWeek: DayOption[] = [
   { id: "sunday", label: "Domingo" },
 ];
 
-// Create event type for the calendar
-type CalendarEvent = {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  resource: {
-    subjectId: string;
-    subjectColor: string;
-    location?: string;
-    notes?: string;
-    scheduleEntryId: string;
-  };
+// Map day ID to Spanish name
+const dayNameMap: Record<string, string> = {
+  monday: "Lunes",
+  tuesday: "Martes",
+  wednesday: "Miércoles",
+  thursday: "Jueves",
+  friday: "Viernes",
+  saturday: "Sábado",
+  sunday: "Domingo",
 };
 
-// Set up moment locale
-moment.locale('es');
-const localizer = momentLocalizer(moment);
+type ScheduleViewProps = {
+  day: string;
+  entries: any[];
+  onSelectEntry: (entry: any) => void;
+}
 
-// Custom calendar components for mobile
-const CustomEvent = ({ event }: { event: CalendarEvent }) => {
-  const { isMobile } = useMobile();
-  
-  if (isMobile) {
-    return (
-      <div 
-        className="rounded-md p-2 text-white overflow-hidden h-full"
-        style={{ backgroundColor: event.resource.subjectColor }}
-      >
-        <div className="font-bold text-sm truncate">{event.title}</div>
-        <div className="text-xs opacity-90">
-          {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
-        </div>
-        {event.resource.location && (
-          <div className="text-xs truncate mt-1 opacity-80">
-            {event.resource.location}
-          </div>
-        )}
-      </div>
-    );
-  }
-  
+const DayScheduleView = ({ day, entries, onSelectEntry }: ScheduleViewProps) => {
   return (
-    <div 
-      className="rounded-md p-1.5 text-white overflow-hidden h-full"
-      style={{ backgroundColor: event.resource.subjectColor }}
-    >
-      <div className="font-bold truncate">{event.title}</div>
-      <div className="text-xs">
-        {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-medium">{dayNameMap[day]}</h2>
       </div>
-      {event.resource.location && (
-        <div className="text-xs truncate mt-0.5 opacity-80">
-          {event.resource.location}
+      {entries.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          No hay clases programadas para este día
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {entries.map((entry) => (
+            <Card 
+              key={entry.id} 
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => onSelectEntry(entry)}
+            >
+              <CardContent className="p-4">
+                <div 
+                  className="w-full flex items-center gap-3"
+                >
+                  <div 
+                    className="w-2 h-12 rounded-full"
+                    style={{ backgroundColor: entry.subject?.color }}
+                  />
+                  <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                      <h3 className="font-medium">{entry.subject?.name}</h3>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Clock className="h-3.5 w-3.5 mr-1" />
+                        <span>
+                          {entry.start_time} - {entry.end_time}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {entry.location && (
+                      <div className="flex items-center text-sm text-muted-foreground mt-1.5">
+                        <MapPin className="h-3.5 w-3.5 mr-1" />
+                        <span>{entry.location}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>
@@ -112,7 +113,8 @@ const Schedule = () => {
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<any>(null);
+  const [activeDay, setActiveDay] = useState<string>("monday");
   
   // Form state for adding/editing schedule entries
   const [formData, setFormData] = useState({
@@ -123,6 +125,48 @@ const Schedule = () => {
     location: '',
     notes: ''
   });
+
+  // Organize entries by day
+  const entriesByDay = React.useMemo(() => {
+    const result: Record<string, any[]> = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+      saturday: [],
+      sunday: [],
+    };
+    
+    // Sort function for time
+    const sortByTime = (a: any, b: any) => {
+      return a.start_time.localeCompare(b.start_time);
+    };
+    
+    if (scheduleEntries.length > 0) {
+      scheduleEntries.forEach(entry => {
+        // Find the subject for this entry
+        const subject = subjects.find(s => s.id === entry.subject_id);
+        
+        // Add entry to each day it belongs to
+        entry.days_of_week.forEach((day: string) => {
+          if (result[day]) {
+            result[day].push({
+              ...entry,
+              subject
+            });
+          }
+        });
+      });
+      
+      // Sort entries by start time
+      Object.keys(result).forEach(day => {
+        result[day].sort(sortByTime);
+      });
+    }
+    
+    return result;
+  }, [scheduleEntries, subjects]);
 
   // Reset form data
   const resetFormData = () => {
@@ -137,7 +181,7 @@ const Schedule = () => {
   };
 
   // Handle form input changes
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData({
       ...formData,
       [field]: value
@@ -173,12 +217,12 @@ const Schedule = () => {
 
   // Delete schedule entry
   const handleDeleteEntry = async () => {
-    if (!selectedEvent) return;
+    if (!selectedEntry) return;
     
     try {
-      await deleteScheduleEntry(selectedEvent.resource.scheduleEntryId);
+      await deleteScheduleEntry(selectedEntry.id);
       setIsEditDialogOpen(false);
-      setSelectedEvent(null);
+      setSelectedEntry(null);
     } catch (error) {
       console.error("Error deleting schedule entry:", error);
     }
@@ -186,10 +230,10 @@ const Schedule = () => {
 
   // Update schedule entry
   const handleUpdateEntry = async () => {
-    if (!selectedEvent) return;
+    if (!selectedEntry) return;
     
     try {
-      await updateScheduleEntry(selectedEvent.resource.scheduleEntryId, {
+      await updateScheduleEntry(selectedEntry.id, {
         subject_id: formData.subject_id,
         start_time: formData.start_time,
         end_time: formData.end_time,
@@ -199,121 +243,27 @@ const Schedule = () => {
       });
       
       setIsEditDialogOpen(false);
-      setSelectedEvent(null);
+      setSelectedEntry(null);
     } catch (error) {
       console.error("Error updating schedule entry:", error);
     }
   };
-
-  // Handle event selection
-  const handleSelectEvent = (event: CalendarEvent) => {
-    setSelectedEvent(event);
+  
+  // Handle entry selection for editing
+  const handleSelectEntry = (entry: any) => {
+    setSelectedEntry(entry);
     
-    // Find the schedule entry
-    const entry = scheduleEntries.find(e => e.id === event.resource.scheduleEntryId);
-    
-    if (entry) {
-      setFormData({
-        subject_id: entry.subject_id,
-        start_time: entry.start_time,
-        end_time: entry.end_time,
-        days_of_week: entry.days_of_week,
-        location: entry.location || '',
-        notes: entry.notes || ''
-      });
-      
-      setIsEditDialogOpen(true);
-    }
-  };
-
-  // Convert schedule entries to calendar events
-  const events = useMemo(() => {
-    const calendarEvents: CalendarEvent[] = [];
-    
-    // Get the current date and start of the week
-    const today = new Date();
-    const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Start week on Monday
-    
-    // Function to get day number (0-6) from day name
-    const getDayNumber = (day: string): number => {
-      const dayMap: Record<string, number> = {
-        monday: 1,
-        tuesday: 2,
-        wednesday: 3,
-        thursday: 4,
-        friday: 5,
-        saturday: 6,
-        sunday: 0
-      };
-      return dayMap[day] ?? -1;
-    };
-    
-    // Parse time string to hours and minutes
-    const parseTime = (timeStr: string): { hours: number, minutes: number } => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return { hours, minutes };
-    };
-    
-    // Loop through each schedule entry
-    scheduleEntries.forEach(entry => {
-      // Get the subject details
-      const subject = subjects.find(s => s.id === entry.subject_id);
-      if (!subject) return;
-      
-      // Parse start and end times
-      const startTime = parseTime(entry.start_time);
-      const endTime = parseTime(entry.end_time);
-      
-      // Create events for each day of the week that this class occurs
-      entry.days_of_week.forEach(day => {
-        const dayNumber = getDayNumber(day);
-        if (dayNumber === -1) return;
-        
-        // Calculate the date for this occurrence (based on current week)
-        let eventDate = new Date(weekStart);
-        eventDate.setDate(weekStart.getDate() + ((dayNumber - 1 + 7) % 7));
-        
-        // Set the start time
-        const startDate = new Date(eventDate);
-        startDate.setHours(startTime.hours, startTime.minutes, 0, 0);
-        
-        // Set the end time
-        const endDate = new Date(eventDate);
-        endDate.setHours(endTime.hours, endTime.minutes, 0, 0);
-        
-        // Add the event
-        calendarEvents.push({
-          id: `${entry.id}-${day}`,
-          title: subject.name,
-          start: startDate,
-          end: endDate,
-          resource: {
-            subjectId: subject.id,
-            subjectColor: subject.color || '#3B82F6',
-            location: entry.location,
-            notes: entry.notes,
-            scheduleEntryId: entry.id
-          }
-        });
-      });
+    setFormData({
+      subject_id: entry.subject_id,
+      start_time: entry.start_time,
+      end_time: entry.end_time,
+      days_of_week: entry.days_of_week,
+      location: entry.location || '',
+      notes: entry.notes || ''
     });
     
-    return calendarEvents;
-  }, [scheduleEntries, subjects]);
-
-  // Event style customization
-  const eventStyleGetter = useCallback((event: CalendarEvent) => {
-    return {
-      style: {
-        backgroundColor: 'transparent',
-        borderRadius: '4px',
-        border: 'none',
-        display: 'block',
-        padding: 0,
-        height: '100%'
-      }
-    };
-  }, []);
+    setIsEditDialogOpen(true);
+  };
 
   // Loading state
   if (isLoading) {
@@ -325,58 +275,78 @@ const Schedule = () => {
   }
 
   return (
-    <div className="container mx-auto px-2 py-4">
+    <div className="container mx-auto px-2 py-4 max-w-5xl">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Mi Horario</h1>
         <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="mr-1 h-4 w-4" /> Agregar Clase
+          <Plus className="mr-2 h-4 w-4" /> Agregar Clase
         </Button>
       </div>
 
-      <Card className="shadow-lg border-t-4 border-t-brand-blue">
-        <CardContent className={`p-0 ${isMobile ? 'pb-4' : 'pb-0'}`}>
-          <div className="bg-blue-50 dark:bg-slate-800/20 p-4 mb-2 flex justify-between items-center">
-            <h2 className="text-lg font-medium">
-              {isMobile 
-                ? format(new Date(), 'EEEE, d MMMM', { locale: es }) 
-                : 'Semana del ' + format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'd MMMM', { locale: es })}
-            </h2>
-            <div className="flex gap-1">
-              <Button variant="outline" size="sm">Hoy</Button>
-              <div className="flex border rounded">
-                <Button variant="ghost" size="icon" className="h-8 w-8">◀</Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8">▶</Button>
-              </div>
-            </div>
-          </div>
-          <div className="h-[calc(100vh-250px)] px-2">
-            <Calendar
-              localizer={localizer}
-              events={events}
-              startAccessor="start"
-              endAccessor="end"
-              defaultView={isMobile ? "day" : "week"}
-              views={['day', 'week']}
-              min={new Date(0, 0, 0, 7, 0, 0)} // Start at 7 AM
-              max={new Date(0, 0, 0, 22, 0, 0)} // End at 10 PM
-              eventPropGetter={eventStyleGetter}
-              onSelectEvent={handleSelectEvent}
-              culture="es"
-              components={{
-                event: CustomEvent as any,
-              }}
-              formats={{
-                timeGutterFormat: 'HH:mm',
-                eventTimeRangeFormat: ({ start, end }) => {
-                  return `${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`;
-                },
-                dayFormat: (date) => format(date, 'EEE', { locale: es }),
-              }}
-              className="custom-calendar"
+      <Tabs defaultValue={activeDay} value={activeDay} onValueChange={setActiveDay} className="w-full">
+        <div className="bg-muted/30 rounded-lg p-1 mb-6 overflow-auto">
+          <TabsList className="w-full justify-start bg-transparent h-auto p-1 gap-1">
+            {daysOfWeek.map((day) => (
+              <TabsTrigger
+                key={day.id}
+                value={day.id}
+                className={cn(
+                  "py-2 px-3 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
+                  "data-[state=active]:shadow-sm whitespace-nowrap"
+                )}
+              >
+                {isMobile ? day.label.substring(0, 3) : day.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        {daysOfWeek.map((day) => (
+          <TabsContent key={day.id} value={day.id} className="mt-0">
+            <DayScheduleView 
+              day={day.id} 
+              entries={entriesByDay[day.id] || []} 
+              onSelectEntry={handleSelectEntry}
             />
-          </div>
-        </CardContent>
-      </Card>
+          </TabsContent>
+        ))}
+      </Tabs>
+
+      {/* Weekly Overview on Desktop */}
+      {!isMobile && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="text-lg">Resumen Semanal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-7 gap-2">
+              {daysOfWeek.map((day) => (
+                <div key={day.id} className="text-center">
+                  <div className="font-medium pb-2 border-b">{day.label}</div>
+                  <div className="pt-2 text-sm">
+                    <div className="space-y-1">
+                      {(entriesByDay[day.id] || []).length > 0 ? (
+                        entriesByDay[day.id].map((entry, idx) => (
+                          <div 
+                            key={idx}
+                            className="p-1 rounded text-xs mb-1 text-white truncate"
+                            style={{ backgroundColor: entry.subject?.color }}
+                            title={`${entry.subject?.name} (${entry.start_time} - ${entry.end_time})`}
+                          >
+                            {entry.start_time}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-muted-foreground text-xs py-2">-</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add Class Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -389,14 +359,14 @@ const Schedule = () => {
           </DialogHeader>
 
           <ScrollArea className="max-h-[60vh] pr-4">
-            <div className="grid gap-4">
+            <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="subject">Materia</Label>
                 <Select
                   value={formData.subject_id}
                   onValueChange={(value) => handleInputChange('subject_id', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="subject">
                     <SelectValue placeholder="Selecciona una materia" />
                   </SelectTrigger>
                   <SelectContent>
@@ -476,7 +446,10 @@ const Schedule = () => {
             }}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveEntry} disabled={!formData.subject_id || formData.days_of_week.length === 0}>
+            <Button 
+              onClick={handleSaveEntry} 
+              disabled={!formData.subject_id || formData.days_of_week.length === 0}
+            >
               Guardar
             </Button>
           </DialogFooter>
@@ -494,14 +467,14 @@ const Schedule = () => {
           </DialogHeader>
 
           <ScrollArea className="max-h-[60vh] pr-4">
-            <div className="grid gap-4">
+            <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="subject">Materia</Label>
+                <Label htmlFor="subject-edit">Materia</Label>
                 <Select
                   value={formData.subject_id}
                   onValueChange={(value) => handleInputChange('subject_id', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="subject-edit">
                     <SelectValue placeholder="Selecciona una materia" />
                   </SelectTrigger>
                   <SelectContent>
@@ -522,18 +495,18 @@ const Schedule = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="start_time">Hora de inicio</Label>
+                  <Label htmlFor="start_time-edit">Hora de inicio</Label>
                   <Input
-                    id="start_time"
+                    id="start_time-edit"
                     type="time"
                     value={formData.start_time}
                     onChange={(e) => handleInputChange('start_time', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="end_time">Hora de fin</Label>
+                  <Label htmlFor="end_time-edit">Hora de fin</Label>
                   <Input
-                    id="end_time"
+                    id="end_time-edit"
                     type="time"
                     value={formData.end_time}
                     onChange={(e) => handleInputChange('end_time', e.target.value)}
@@ -542,7 +515,7 @@ const Schedule = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="days">Días de la semana</Label>
+                <Label htmlFor="days-edit">Días de la semana</Label>
                 <MultiSelectDays
                   options={daysOfWeek}
                   selected={formData.days_of_week}
@@ -552,9 +525,9 @@ const Schedule = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-location">Ubicación (opcional)</Label>
+                <Label htmlFor="location-edit">Ubicación (opcional)</Label>
                 <Input
-                  id="edit-location"
+                  id="location-edit"
                   placeholder="Ej: Aula 101, Edificio A"
                   value={formData.location}
                   onChange={(e) => handleInputChange('location', e.target.value)}
@@ -562,9 +535,9 @@ const Schedule = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-notes">Notas adicionales (opcional)</Label>
+                <Label htmlFor="notes-edit">Notas adicionales (opcional)</Label>
                 <Textarea
-                  id="edit-notes"
+                  id="notes-edit"
                   placeholder="Añade notas o detalles adicionales"
                   value={formData.notes}
                   onChange={(e) => handleInputChange('notes', e.target.value)}
@@ -576,76 +549,25 @@ const Schedule = () => {
 
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button variant="destructive" onClick={handleDeleteEntry} className="sm:mr-auto">
-              Eliminar
+              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
             </Button>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => {
                 setIsEditDialogOpen(false);
-                setSelectedEvent(null);
+                setSelectedEntry(null);
               }}>
                 Cancelar
               </Button>
-              <Button onClick={handleUpdateEntry} disabled={!formData.subject_id || formData.days_of_week.length === 0}>
+              <Button 
+                onClick={handleUpdateEntry} 
+                disabled={!formData.subject_id || formData.days_of_week.length === 0}
+              >
                 Actualizar
               </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <style jsx global>{`
-        .custom-calendar {
-          border: none !important;
-        }
-        .rbc-header {
-          padding: 10px !important;
-          font-weight: 600 !important;
-          text-transform: uppercase !important;
-          font-size: 12px !important;
-          background-color: #f9fafc !important;
-          border-bottom: 1px solid #e5e7eb !important;
-        }
-        .dark .rbc-header {
-          background-color: rgba(30, 41, 59, 0.2) !important;
-        }
-        .rbc-day-bg {
-          background-color: white !important;
-        }
-        .dark .rbc-day-bg {
-          background-color: rgba(30, 41, 59, 0.05) !important;
-        }
-        .rbc-event {
-          padding: 0 !important;
-        }
-        .rbc-today {
-          background-color: rgba(59, 130, 246, 0.05) !important;
-        }
-        .dark .rbc-today {
-          background-color: rgba(59, 130, 246, 0.15) !important;
-        }
-        .rbc-time-slot {
-          border-top: 1px solid #f1f5f9 !important;
-        }
-        .dark .rbc-time-slot {
-          border-top: 1px solid rgba(148, 163, 184, 0.1) !important;
-        }
-        .rbc-timeslot-group {
-          border-bottom: 1px solid #e5e7eb !important;
-        }
-        .dark .rbc-timeslot-group {
-          border-bottom: 1px solid rgba(148, 163, 184, 0.2) !important;
-        }
-        @media (max-width: 768px) {
-          .rbc-toolbar {
-            flex-direction: column !important;
-            align-items: stretch !important;
-            margin-bottom: 10px !important;
-          }
-          .rbc-toolbar-label {
-            margin: 8px 0 !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };
