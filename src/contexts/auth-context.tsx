@@ -48,10 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Obteniendo perfil para el usuario:", userId);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Timeout al obtener el perfil")),
-          250
-        )
+        setTimeout(() => reject(new Error("Timeout al obtener el perfil")), 250)
       );
       const profilePromise = supabase
         .from("profiles")
@@ -66,17 +63,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }),
       ]);
 
-      // const { data, error } = await supabase
-      //   .from("profiles")
-      //   .select("*")
-      //   .eq("id", userId)
-      //   .single();
-
       console.log("Resultado de la consulta de perfil:", { data, error });
 
       if (error) {
         console.error("Error al obtener el perfil:", error);
-        // throw new Error("Error al obtener el perfil");
         return null;
       }
 
@@ -89,32 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return data;
     } catch (error) {
       console.error("Error fetching profile:", error);
-      // setProfile(null);
       return null;
     }
   };
 
   // Initial session check
   useEffect(() => {
-    // const checkSession = async () => {
-    //   setIsLoading(true);
-    //   try {
-    //     // Get current session
-    //     const { data: { session } } = await supabase.auth.getSession();
-    //     setSession(session);
-    //     setUser(session?.user ?? null);
-
-    //     if (session?.user) {
-    //       await fetchProfile(session.user.id);
-    //     }
-    //   } catch (error) {
-    //     console.error("Error checking session:", error);
-    //   } finally {
-    //     setIsLoading(false);
-    //   }
-    // };
-
-    // checkSession();
     const checkSession = async () => {
       setIsLoading(true);
       console.log("Iniciando verificación de sesión...");
@@ -183,8 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         console.log("La pestaña volvió a estar activa, verificando sesión...");
-        // console.log("NO SE HACE NADA");
-        // return;
+
         // Solo verifica la sesión si no hay una sesión activa
         if (!session || !user) {
           checkSession();
@@ -199,28 +168,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkSession();
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    // Listen for auth changes
-    //   const {
-    //     data: { subscription },
-    //   } = supabase.auth.onAuthStateChange(async (_event, session) => {
-    //     setIsLoading(true);
-    //     setSession(session);
-    //     setUser(session?.user ?? null);
-
-    //     if (session?.user) {
-    //       await fetchProfile(session.user.id);
-    //     } else {
-    //       setProfile(null);
-    //     }
-
-    //     setIsLoading(false);
-    //   });
-
-    //   return () => {
-    //     subscription.unsubscribe();
-    //   };
-    // }, []);
 
     const {
       data: { subscription },
@@ -268,10 +215,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
       });
-
-      // if (response.data?.session) {
-      //   localStorage.setItem("authToken", response.data.session.access_token);
-      // }
 
       return {
         error: response.error,
