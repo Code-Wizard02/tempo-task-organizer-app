@@ -1,4 +1,3 @@
-
 // Add Profile route to the App component
 import { Routes, Route, BrowserRouter } from "react-router-dom";
 import { Layout } from "@/components/layout/layout";
@@ -16,18 +15,50 @@ import { TaskProvider } from "@/contexts/task-context";
 import { SubjectProvider } from "@/contexts/subject-context";
 import { ProfessorProvider } from "@/contexts/professor-context";
 import { ThemeProvider } from "@/components/theme-provider";
-import Profile from "@/pages/Profile"; // Import Profile page
+import Profile from "@/pages/Profile";
 import { MobileProvider } from "./hooks/use-mobile";
+import { useEffect, useState } from "react";
 
 function App() {
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event: any) => {
+      event.preventDefault();
+      setDeferredPrompt(event);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
+    };
+  }, []);
+
+  const handleInstallClick = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult: any) => {
+        if (choiceResult.outcome === "accepted") {
+          console.log("User accepted the A2HS prompt");
+        } else {
+          console.log("User dismissed the A2HS prompt");
+        }
+        setDeferredPrompt(null);
+      });
+    }
+  };
   return (
     <MobileProvider>
-    <BrowserRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <SubjectProvider>
-            <ProfessorProvider>
-              <TaskProvider>
+      <BrowserRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <SubjectProvider>
+              <ProfessorProvider>
+                <TaskProvider>
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route
@@ -51,16 +82,35 @@ function App() {
                       <Route path="tasks" element={<Tasks />} />
                       <Route path="subjects" element={<Subjects />} />
                       <Route path="professors" element={<Professors />} />
-                      <Route path="profile" element={<Profile />} /> 
+                      <Route path="profile" element={<Profile />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-              </TaskProvider>
-            </ProfessorProvider>
-          </SubjectProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </BrowserRouter>
+                  {/* Botón para instalar la PWA */}
+                  {deferredPrompt && (
+                    <button
+                      onClick={handleInstallClick}
+                      style={{
+                        position: "fixed",
+                        bottom: "20px",
+                        right: "20px",
+                        padding: "10px 20px",
+                        backgroundColor: "#1e90ff",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Instalar Aplicación
+                    </button>
+                  )}
+                </TaskProvider>
+              </ProfessorProvider>
+            </SubjectProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
     </MobileProvider>
   );
 }
