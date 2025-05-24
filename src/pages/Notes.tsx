@@ -1,11 +1,23 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, ArrowLeft, SortAsc, SortDesc, BookOpen } from "lucide-react";
+import {
+  Plus,
+  Search,
+  ArrowLeft,
+  SortAsc,
+  SortDesc,
+  BookOpen,
+} from "lucide-react";
 import { useNotes } from "@/contexts/notes-context";
 import { useSubjects } from "@/contexts/subject-context";
 import { NoteEditor } from "@/components/notes/note-editor";
@@ -17,19 +29,22 @@ export default function Notes() {
   const { subjects } = useSubjects();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'title'>('date');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(
+    null
+  );
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "title">("date");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // Calcular carpetas de materias con notas
   const subjectFolders = useMemo(() => {
-    const subjectsWithNotes = subjects.filter(subject => 
-      notes.some(note => note.subject_id === subject.id)
-    ).map(subject => ({
-      subject,
-      noteCount: notes.filter(note => note.subject_id === subject.id).length
-    }));
+    const subjectsWithNotes = subjects
+      .filter((subject) => notes.some((note) => note.subject_id === subject.id))
+      .map((subject) => ({
+        subject,
+        noteCount: notes.filter((note) => note.subject_id === subject.id)
+          .length,
+      }));
 
     return subjectsWithNotes;
   }, [subjects, notes]);
@@ -38,24 +53,27 @@ export default function Notes() {
   const filteredNotes = useMemo(() => {
     if (!selectedSubjectId) return [];
 
-    let filtered = notes.filter(note => note.subject_id === selectedSubjectId);
+    let filtered = notes.filter(
+      (note) => note.subject_id === selectedSubjectId
+    );
 
     // Aplicar búsqueda
     if (searchTerm) {
-      filtered = filtered.filter(note =>
-        note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        note.content?.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (note) =>
+          note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          note.content?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Aplicar ordenamiento
     filtered.sort((a, b) => {
-      if (sortBy === 'date') {
+      if (sortBy === "date") {
         const dateA = new Date(a.updatedAt).getTime();
         const dateB = new Date(b.updatedAt).getTime();
-        return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+        return sortDirection === "asc" ? dateA - dateB : dateB - dateA;
       } else {
-        return sortDirection === 'asc' 
+        return sortDirection === "asc"
           ? a.title.localeCompare(b.title)
           : b.title.localeCompare(a.title);
       }
@@ -64,7 +82,7 @@ export default function Notes() {
     return filtered;
   }, [notes, selectedSubjectId, searchTerm, sortBy, sortDirection]);
 
-  const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
+  const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
 
   const handleCreateNote = () => {
     setEditingNote(null);
@@ -77,22 +95,22 @@ export default function Notes() {
   };
 
   const handleDeleteNote = async (noteId: string) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar esta nota?')) {
+    if (window.confirm("¿Estás seguro de que quieres eliminar esta nota?")) {
       await deleteNote(noteId);
     }
   };
 
   const handleBackToFolders = () => {
     setSelectedSubjectId(null);
-    setSearchTerm('');
+    setSearchTerm("");
   };
 
-  const toggleSort = (field: 'date' | 'title') => {
+  const toggleSort = (field: "date" | "title") => {
     if (sortBy === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortBy(field);
-      setSortDirection('desc');
+      setSortDirection("desc");
     }
   };
 
@@ -102,7 +120,7 @@ export default function Notes() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Mis Notas</h2>
+            <h2 className="text-2xl font-bold tracking-tight">Gestión de Notas</h2>
             <p className="text-muted-foreground">
               Organiza tus notas por materias
             </p>
@@ -117,7 +135,9 @@ export default function Notes() {
           <Card className="text-center py-12">
             <CardContent>
               <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No tienes notas aún</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                No tienes notas aún
+              </h3>
               <p className="text-muted-foreground mb-4">
                 Crea tu primera nota para empezar a organizar tu conocimiento
               </p>
@@ -152,35 +172,52 @@ export default function Notes() {
   // Vista de notas de una materia específica
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleBackToFolders}
-          className="h-8 w-8"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex items-center gap-3 flex-1">
-          {selectedSubject && (
-            <div 
-              className="w-4 h-4 rounded-full"
-              style={{ backgroundColor: selectedSubject.color }}
-            />
-          )}
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">
-              {selectedSubject?.name}
-            </h2>
-            <p className="text-muted-foreground">
-              {filteredNotes.length} {filteredNotes.length === 1 ? 'nota' : 'notas'}
-            </p>
+      <div className="flex flex-col gap-4 relative">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleBackToFolders}
+            className="h-8 w-8"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              {selectedSubject && (
+                <div
+                  className="w-4 h-4 rounded-full"
+                  style={{ backgroundColor: selectedSubject.color }}
+                />
+              )}
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">
+                  {selectedSubject?.name}
+                </h2>
+                <p className="text-muted-foreground">
+                  {filteredNotes.length}{" "}
+                  {filteredNotes.length === 1 ? "nota" : "notas"}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-        <Button onClick={handleCreateNote}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nueva Nota
-        </Button>
+
+        {/* Botón "Nueva Nota" para dispositivos móviles */}
+        <div className="block sm:hidden">
+          <Button onClick={handleCreateNote} className="w-full">
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva Nota
+          </Button>
+        </div>
+
+        {/* Botón "Nueva Nota" para pantallas más grandes */}
+        <div className="hidden sm:block absolute top-0 right-0 mt-4 mr-4">
+          <Button onClick={handleCreateNote}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva Nota
+          </Button>
+        </div>
       </div>
 
       {/* Filtros y búsqueda */}
@@ -199,34 +236,36 @@ export default function Notes() {
                 className="pl-9"
               />
             </div>
-            
+
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => toggleSort('date')}
+                onClick={() => toggleSort("date")}
                 className="flex items-center gap-2"
               >
                 Fecha
-                {sortBy === 'date' && (
-                  sortDirection === 'asc' ? 
-                    <SortAsc className="h-4 w-4" /> : 
+                {sortBy === "date" &&
+                  (sortDirection === "asc" ? (
+                    <SortAsc className="h-4 w-4" />
+                  ) : (
                     <SortDesc className="h-4 w-4" />
-                )}
+                  ))}
               </Button>
-              
+
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => toggleSort('title')}
+                onClick={() => toggleSort("title")}
                 className="flex items-center gap-2"
               >
                 Título
-                {sortBy === 'title' && (
-                  sortDirection === 'asc' ? 
-                    <SortAsc className="h-4 w-4" /> : 
+                {sortBy === "title" &&
+                  (sortDirection === "asc" ? (
+                    <SortAsc className="h-4 w-4" />
+                  ) : (
                     <SortDesc className="h-4 w-4" />
-                )}
+                  ))}
               </Button>
             </div>
           </div>
@@ -239,13 +278,14 @@ export default function Notes() {
           <CardContent>
             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">
-              {searchTerm ? 'No se encontraron notas' : 'No hay notas en esta materia'}
+              {searchTerm
+                ? "No se encontraron notas"
+                : "No hay notas en esta materia"}
             </h3>
             <p className="text-muted-foreground mb-4">
-              {searchTerm 
-                ? 'Intenta con otros términos de búsqueda'
-                : 'Crea tu primera nota para esta materia'
-              }
+              {searchTerm
+                ? "Intenta con otros términos de búsqueda"
+                : "Crea tu primera nota para esta materia"}
             </p>
             <Button onClick={handleCreateNote}>
               <Plus className="mr-2 h-4 w-4" />
@@ -259,7 +299,7 @@ export default function Notes() {
             <NoteCard
               key={note.id}
               note={note}
-              subjectColor={selectedSubject?.color || '#6366f1'}
+              subjectColor={selectedSubject?.color || "#6366f1"}
               onEdit={() => handleEditNote(note)}
               onDelete={() => handleDeleteNote(note.id)}
               onClick={() => handleEditNote(note)}

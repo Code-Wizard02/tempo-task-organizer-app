@@ -1,28 +1,47 @@
-
-import React, { useState, useEffect } from 'react';
-import { format, parse, addDays } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { CalendarIcon, Plus, Trash2, Clock, MapPin, FileText } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { format, parse, addDays } from "date-fns";
+import { es } from "date-fns/locale";
+import {
+  CalendarIcon,
+  Plus,
+  Trash2,
+  Clock,
+  MapPin,
+  FileText,
+  Save,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { useSubjects } from '@/contexts/subject-context';
-import { useSchedule } from '@/contexts/schedule-context';
-import { useMobile } from '@/hooks/use-mobile';
-import { Separator } from '@/components/ui/separator';
-import { MultiSelectDays, type DayOption } from '@/components/ui/multi-select-days';
-import { cn } from '@/lib/utils';
+import { useSubjects } from "@/contexts/subject-context";
+import { useSchedule } from "@/contexts/schedule-context";
+import { useMobile } from "@/hooks/use-mobile";
+import { Separator } from "@/components/ui/separator";
+import {
+  MultiSelectDays,
+  type DayOption,
+} from "@/components/ui/multi-select-days";
+import { cn } from "@/lib/utils";
 
 // Define the days of the week
 const daysOfWeek: DayOption[] = [
@@ -50,9 +69,13 @@ type ScheduleViewProps = {
   day: string;
   entries: any[];
   onSelectEntry: (entry: any) => void;
-}
+};
 
-const DayScheduleView = ({ day, entries, onSelectEntry }: ScheduleViewProps) => {
+const DayScheduleView = ({
+  day,
+  entries,
+  onSelectEntry,
+}: ScheduleViewProps) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -65,16 +88,14 @@ const DayScheduleView = ({ day, entries, onSelectEntry }: ScheduleViewProps) => 
       ) : (
         <div className="space-y-3">
           {entries.map((entry) => (
-            <Card 
-              key={entry.id} 
+            <Card
+              key={entry.id}
               className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => onSelectEntry(entry)}
             >
               <CardContent className="p-4">
-                <div 
-                  className="w-full flex items-center gap-3"
-                >
-                  <div 
+                <div className="w-full flex items-center gap-3">
+                  <div
                     className="w-2 h-12 rounded-full"
                     style={{ backgroundColor: entry.subject?.color }}
                   />
@@ -88,7 +109,7 @@ const DayScheduleView = ({ day, entries, onSelectEntry }: ScheduleViewProps) => 
                         </span>
                       </div>
                     </div>
-                    
+
                     {entry.location && (
                       <div className="flex items-center text-sm text-muted-foreground mt-1.5">
                         <MapPin className="h-3.5 w-3.5 mr-1" />
@@ -107,23 +128,29 @@ const DayScheduleView = ({ day, entries, onSelectEntry }: ScheduleViewProps) => 
 };
 
 const Schedule = () => {
-  const { isMobile } = useMobile();
+  const isMobile = useMobile();
   const { subjects } = useSubjects();
-  const { scheduleEntries, addScheduleEntry, updateScheduleEntry, deleteScheduleEntry, isLoading } = useSchedule();
-  
+  const {
+    scheduleEntries,
+    addScheduleEntry,
+    updateScheduleEntry,
+    deleteScheduleEntry,
+    isLoading,
+  } = useSchedule();
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
   const [activeDay, setActiveDay] = useState<string>("monday");
-  
+
   // Form state for adding/editing schedule entries
   const [formData, setFormData] = useState({
-    subject_id: '',
-    start_time: '08:00',
-    end_time: '09:30',
+    subject_id: "",
+    start_time: "08:00",
+    end_time: "09:00",
     days_of_week: [] as string[],
-    location: '',
-    notes: ''
+    location: "",
+    notes: "",
   });
 
   // Organize entries by day
@@ -137,46 +164,46 @@ const Schedule = () => {
       saturday: [],
       sunday: [],
     };
-    
+
     // Sort function for time
     const sortByTime = (a: any, b: any) => {
       return a.start_time.localeCompare(b.start_time);
     };
-    
+
     if (scheduleEntries.length > 0) {
-      scheduleEntries.forEach(entry => {
+      scheduleEntries.forEach((entry) => {
         // Find the subject for this entry
-        const subject = subjects.find(s => s.id === entry.subject_id);
-        
+        const subject = subjects.find((s) => s.id === entry.subject_id);
+
         // Add entry to each day it belongs to
         entry.days_of_week.forEach((day: string) => {
           if (result[day]) {
             result[day].push({
               ...entry,
-              subject
+              subject,
             });
           }
         });
       });
-      
+
       // Sort entries by start time
-      Object.keys(result).forEach(day => {
+      Object.keys(result).forEach((day) => {
         result[day].sort(sortByTime);
       });
     }
-    
+
     return result;
   }, [scheduleEntries, subjects]);
 
   // Reset form data
   const resetFormData = () => {
     setFormData({
-      subject_id: '',
-      start_time: '08:00',
-      end_time: '09:30',
+      subject_id: "",
+      start_time: "08:00",
+      end_time: "09:00",
       days_of_week: [],
-      location: '',
-      notes: ''
+      location: "",
+      notes: "",
     });
   };
 
@@ -184,7 +211,7 @@ const Schedule = () => {
   const handleInputChange = (field: string, value: any) => {
     setFormData({
       ...formData,
-      [field]: value
+      [field]: value,
     });
   };
 
@@ -192,7 +219,7 @@ const Schedule = () => {
   const handleDaysChange = (days: string[]) => {
     setFormData({
       ...formData,
-      days_of_week: days
+      days_of_week: days,
     });
   };
 
@@ -205,9 +232,9 @@ const Schedule = () => {
         end_time: formData.end_time,
         days_of_week: formData.days_of_week,
         location: formData.location,
-        notes: formData.notes
+        notes: formData.notes,
       });
-      
+
       setIsAddDialogOpen(false);
       resetFormData();
     } catch (error) {
@@ -218,7 +245,7 @@ const Schedule = () => {
   // Delete schedule entry
   const handleDeleteEntry = async () => {
     if (!selectedEntry) return;
-    
+
     try {
       await deleteScheduleEntry(selectedEntry.id);
       setIsEditDialogOpen(false);
@@ -231,7 +258,7 @@ const Schedule = () => {
   // Update schedule entry
   const handleUpdateEntry = async () => {
     if (!selectedEntry) return;
-    
+
     try {
       await updateScheduleEntry(selectedEntry.id, {
         subject_id: formData.subject_id,
@@ -239,29 +266,29 @@ const Schedule = () => {
         end_time: formData.end_time,
         days_of_week: formData.days_of_week,
         location: formData.location,
-        notes: formData.notes
+        notes: formData.notes,
       });
-      
+
       setIsEditDialogOpen(false);
       setSelectedEntry(null);
     } catch (error) {
       console.error("Error updating schedule entry:", error);
     }
   };
-  
+
   // Handle entry selection for editing
   const handleSelectEntry = (entry: any) => {
     setSelectedEntry(entry);
-    
+
     setFormData({
       subject_id: entry.subject_id,
       start_time: entry.start_time,
       end_time: entry.end_time,
       days_of_week: entry.days_of_week,
-      location: entry.location || '',
-      notes: entry.notes || ''
+      location: entry.location || "",
+      notes: entry.notes || "",
     });
-    
+
     setIsEditDialogOpen(true);
   };
 
@@ -275,15 +302,25 @@ const Schedule = () => {
   }
 
   return (
-    <div className="container mx-auto px-2 py-4 max-w-5xl">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Mi Horario</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Gestión de Horario</h1>
+          <p className="text-muted-foreground">
+            Administra tu horario de clases aquí.
+          </p>
+        </div>
         <Button onClick={() => setIsAddDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Agregar Clase
         </Button>
       </div>
 
-      <Tabs defaultValue={activeDay} value={activeDay} onValueChange={setActiveDay} className="w-full">
+      <Tabs
+        defaultValue={activeDay}
+        value={activeDay}
+        onValueChange={setActiveDay}
+        className="w-full"
+      >
         <div className="bg-muted/30 rounded-lg p-1 mb-6 overflow-auto">
           <TabsList className="w-full justify-start bg-transparent h-auto p-1 gap-1">
             {daysOfWeek.map((day) => (
@@ -303,9 +340,9 @@ const Schedule = () => {
 
         {daysOfWeek.map((day) => (
           <TabsContent key={day.id} value={day.id} className="mt-0">
-            <DayScheduleView 
-              day={day.id} 
-              entries={entriesByDay[day.id] || []} 
+            <DayScheduleView
+              day={day.id}
+              entries={entriesByDay[day.id] || []}
               onSelectEntry={handleSelectEntry}
             />
           </TabsContent>
@@ -327,17 +364,19 @@ const Schedule = () => {
                     <div className="space-y-1">
                       {(entriesByDay[day.id] || []).length > 0 ? (
                         entriesByDay[day.id].map((entry, idx) => (
-                          <div 
+                          <div
                             key={idx}
                             className="p-1 rounded text-xs mb-1 text-white truncate"
                             style={{ backgroundColor: entry.subject?.color }}
                             title={`${entry.subject?.name} (${entry.start_time} - ${entry.end_time})`}
                           >
-                            {entry.start_time}
+                            {entry.subject?.name}
                           </div>
                         ))
                       ) : (
-                        <div className="text-muted-foreground text-xs py-2">-</div>
+                        <div className="text-muted-foreground text-xs py-2">
+                          -
+                        </div>
                       )}
                     </div>
                   </div>
@@ -364,7 +403,9 @@ const Schedule = () => {
                 <Label htmlFor="subject">Materia</Label>
                 <Select
                   value={formData.subject_id}
-                  onValueChange={(value) => handleInputChange('subject_id', value)}
+                  onValueChange={(value) =>
+                    handleInputChange("subject_id", value)
+                  }
                 >
                   <SelectTrigger id="subject">
                     <SelectValue placeholder="Selecciona una materia" />
@@ -392,7 +433,9 @@ const Schedule = () => {
                     id="start_time"
                     type="time"
                     value={formData.start_time}
-                    onChange={(e) => handleInputChange('start_time', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("start_time", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -401,7 +444,9 @@ const Schedule = () => {
                     id="end_time"
                     type="time"
                     value={formData.end_time}
-                    onChange={(e) => handleInputChange('end_time', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("end_time", e.target.value)
+                    }
                   />
                 </div>
               </div>
@@ -422,7 +467,9 @@ const Schedule = () => {
                   id="location"
                   placeholder="Ej: Aula 101, Edificio A"
                   value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("location", e.target.value)
+                  }
                 />
               </div>
 
@@ -432,7 +479,7 @@ const Schedule = () => {
                   id="notes"
                   placeholder="Añade notas o detalles adicionales"
                   value={formData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  onChange={(e) => handleInputChange("notes", e.target.value)}
                   className="min-h-[80px]"
                 />
               </div>
@@ -440,16 +487,22 @@ const Schedule = () => {
           </ScrollArea>
 
           <DialogFooter className="flex justify-between flex-wrap gap-2 sm:justify-between">
-            <Button variant="outline" onClick={() => {
-              setIsAddDialogOpen(false);
-              resetFormData();
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddDialogOpen(false);
+                resetFormData();
+              }}
+            >
               Cancelar
             </Button>
-            <Button 
-              onClick={handleSaveEntry} 
-              disabled={!formData.subject_id || formData.days_of_week.length === 0}
+            <Button
+              onClick={handleSaveEntry}
+              disabled={
+                !formData.subject_id || formData.days_of_week.length === 0
+              }
             >
+              <Save className="h-4 w-4 mr-2" />
               Guardar
             </Button>
           </DialogFooter>
@@ -472,7 +525,9 @@ const Schedule = () => {
                 <Label htmlFor="subject-edit">Materia</Label>
                 <Select
                   value={formData.subject_id}
-                  onValueChange={(value) => handleInputChange('subject_id', value)}
+                  onValueChange={(value) =>
+                    handleInputChange("subject_id", value)
+                  }
                 >
                   <SelectTrigger id="subject-edit">
                     <SelectValue placeholder="Selecciona una materia" />
@@ -500,7 +555,9 @@ const Schedule = () => {
                     id="start_time-edit"
                     type="time"
                     value={formData.start_time}
-                    onChange={(e) => handleInputChange('start_time', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("start_time", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -509,7 +566,9 @@ const Schedule = () => {
                     id="end_time-edit"
                     type="time"
                     value={formData.end_time}
-                    onChange={(e) => handleInputChange('end_time', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("end_time", e.target.value)
+                    }
                   />
                 </div>
               </div>
@@ -530,7 +589,9 @@ const Schedule = () => {
                   id="location-edit"
                   placeholder="Ej: Aula 101, Edificio A"
                   value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("location", e.target.value)
+                  }
                 />
               </div>
 
@@ -540,7 +601,7 @@ const Schedule = () => {
                   id="notes-edit"
                   placeholder="Añade notas o detalles adicionales"
                   value={formData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  onChange={(e) => handleInputChange("notes", e.target.value)}
                   className="min-h-[80px]"
                 />
               </div>
@@ -548,19 +609,28 @@ const Schedule = () => {
           </ScrollArea>
 
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button variant="destructive" onClick={handleDeleteEntry} className="sm:mr-auto">
+            <Button
+              variant="destructive"
+              onClick={handleDeleteEntry}
+              className="sm:mr-auto"
+            >
               <Trash2 className="mr-2 h-4 w-4" /> Eliminar
             </Button>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => {
-                setIsEditDialogOpen(false);
-                setSelectedEntry(null);
-              }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setSelectedEntry(null);
+                }}
+              >
                 Cancelar
               </Button>
-              <Button 
-                onClick={handleUpdateEntry} 
-                disabled={!formData.subject_id || formData.days_of_week.length === 0}
+              <Button
+                onClick={handleUpdateEntry}
+                disabled={
+                  !formData.subject_id || formData.days_of_week.length === 0
+                }
               >
                 Actualizar
               </Button>

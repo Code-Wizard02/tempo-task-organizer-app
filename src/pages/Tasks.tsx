@@ -8,6 +8,7 @@ import {
   Clock,
   AlertCircle,
   Calendar,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -558,7 +559,6 @@ export default function Tasks() {
                     }
                     className="pr-10"
                   />
-                  <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-muted-foreground pointer-events-none" />
                 </div>
               </div>
               <div className="grid gap-2">
@@ -677,6 +677,7 @@ export default function Tasks() {
                 !newTask.title || !newTask.dueDate || !newTask.subjectId
               }
             >
+              <Save className="h-4 w-4 mr-2" />
               Guardar
             </Button>
           </DialogFooter>

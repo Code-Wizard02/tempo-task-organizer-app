@@ -14,12 +14,12 @@ export function Layout() {
   const getPageTitle = () => {
     const path = location.pathname;
     if (path === "/dashboard") return "Dashboard";
-    if (path === "/tasks") return "Gestión de Tareas";
+    if (path === "/tasks") return "Tareas";
     if (path === "/subjects") return "Materias";
     if (path === "/professors") return "Profesores";
     if (path === "/profile") return "Mi Perfil";
-    if (path === "/schedule") return "Mi Horario";
-    if (path === "/notes") return "Mis Notas";
+    if (path === "/schedule") return "Horario";
+    if (path === "/notes") return "Notas";
     return "TaskHub";
   };
 

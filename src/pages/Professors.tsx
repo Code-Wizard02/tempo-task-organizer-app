@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { useProfessors } from "@/contexts/professor-context";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, SortAsc, SortDesc } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, SortAsc, SortDesc, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSubjects } from "@/contexts/subject-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -126,7 +126,7 @@ export default function Professors() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Profesores</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Gestión de Profesores</h1>
           <p className="text-muted-foreground">
             Administra y organiza todos los profesores aquí
           </p>
@@ -362,6 +362,7 @@ export default function Professors() {
 
               <DialogFooter>
                 <Button type="submit">
+                  <Save className="h-4 w-4 mr-2" />
                   {editingProfessor ? 'Guardar Cambios' : 'Agregar Profesor'}
                 </Button>
               </DialogFooter>
