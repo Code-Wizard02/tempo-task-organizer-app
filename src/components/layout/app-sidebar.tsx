@@ -81,8 +81,8 @@ export function AppSidebar() {
               
               {!isCollapsed && (
                 <div className="flex flex-col overflow-hidden">
-                  <span className="text-sm font-medium truncate">{profile?.full_name || 'Usuario'}</span>
-                  <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                  <span className="text-sm font-medium truncate max-w-[10rem]">{profile?.full_name || 'Usuario'}</span>
+                  <span className="text-xs text-muted-foreground truncate max-w-[10rem]">{user.email}</span>
                 </div>
               )}
             </Link>
