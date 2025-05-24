@@ -7,7 +7,8 @@ import {
   BookOpen,
   UserRound,
   LayoutDashboard,
-  Calendar
+  Calendar,
+  FileText
 } from "lucide-react";
 
 interface SidebarNavProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -39,6 +40,11 @@ const sidebarItems = [
     title: "Horario",
     href: "/schedule",
     icon: Calendar,
+  },
+  {
+    title: "Notas",
+    href: "/notes",
+    icon: FileText,
   },
 ];
 

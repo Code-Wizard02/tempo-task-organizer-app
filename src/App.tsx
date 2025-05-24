@@ -1,4 +1,3 @@
-
 // Add Profile route to the App component
 import { Routes, Route, BrowserRouter } from "react-router-dom";
 import { Layout } from "@/components/layout/layout";
@@ -21,6 +20,8 @@ import { MobileProvider } from "./hooks/use-mobile";
 import { useEffect, useState } from "react";
 import { ScheduleProvider } from "./contexts/schedule-context";
 import Schedule from "./pages/Schedule";
+import { NotesProvider } from "./contexts/notes-context";
+import Notes from "./pages/Notes";
 
 function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -63,53 +64,56 @@ function App() {
               <ProfessorProvider>
                 <TaskProvider>
                   <ScheduleProvider>
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route
-                        path="/login"
-                        element={
-                          <AuthLayout title="Iniciar Sesión">
-                            <Login />
-                          </AuthLayout>
-                        }
-                      />
-                      <Route
-                        path="/register"
-                        element={
-                          <AuthLayout title="Crear Cuenta">
-                            <Register />
-                          </AuthLayout>
-                        }
-                      />
-                      <Route path="/" element={<Layout />}>
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="tasks" element={<Tasks />} />
-                        <Route path="subjects" element={<Subjects />} />
-                        <Route path="professors" element={<Professors />} />
-                        <Route path="profile" element={<Profile />} />
-                        <Route path="schedule" element={<Schedule />} />
-                      </Route>
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                    {/* Botón para instalar la PWA */}
-                    {deferredPrompt && (
-                      <button
-                        onClick={handleInstallClick}
-                        style={{
-                          position: "fixed",
-                          bottom: "20px",
-                          right: "20px",
-                          padding: "10px 20px",
-                          backgroundColor: "#1e90ff",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: "5px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Instalar Aplicación
-                      </button>
-                    )}
+                    <NotesProvider>
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route
+                          path="/login"
+                          element={
+                            <AuthLayout title="Iniciar Sesión">
+                              <Login />
+                            </AuthLayout>
+                          }
+                        />
+                        <Route
+                          path="/register"
+                          element={
+                            <AuthLayout title="Crear Cuenta">
+                              <Register />
+                            </AuthLayout>
+                          }
+                        />
+                        <Route path="/" element={<Layout />}>
+                          <Route path="dashboard" element={<Dashboard />} />
+                          <Route path="tasks" element={<Tasks />} />
+                          <Route path="subjects" element={<Subjects />} />
+                          <Route path="professors" element={<Professors />} />
+                          <Route path="profile" element={<Profile />} />
+                          <Route path="schedule" element={<Schedule />} />
+                          <Route path="notes" element={<Notes />} />
+                        </Route>
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                      {/* Botón para instalar la PWA */}
+                      {deferredPrompt && (
+                        <button
+                          onClick={handleInstallClick}
+                          style={{
+                            position: "fixed",
+                            bottom: "20px",
+                            right: "20px",
+                            padding: "10px 20px",
+                            backgroundColor: "#1e90ff",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "5px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Instalar Aplicación
+                        </button>
+                      )}
+                    </NotesProvider>
                   </ScheduleProvider>
                 </TaskProvider>
               </ProfessorProvider>

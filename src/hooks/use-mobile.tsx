@@ -24,7 +24,11 @@ export function useMobile() {
     }
   }, []);
 
-  return { isMobile };
+  return isMobile;
+}
+
+export function useIsMobile() {
+  return useMobile();
 }
 
 // This component is here for compatibility but doesn't do anything special
