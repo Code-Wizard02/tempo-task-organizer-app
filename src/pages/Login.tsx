@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,11 +6,14 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { set } from "date-fns";
+import { se } from "date-fns/locale";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [authError, setAuthError] = useState<string | null>(null);
   const { signIn, isLoading } = useAuth();
 
   const validateForm = () => {
@@ -35,25 +37,28 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
 
     if (validateForm()) {
       try {
         const { error } = await signIn(email, password);
         if (error) {
           console.error("Error al iniciar sesión:", error);
-          toast({
-            title: "Error al iniciar sesión",
-            description: error.message || "Credenciales incorrectas",
-            variant: "destructive",
-          });
+          // toast({
+          //   title: "Error al iniciar sesión",
+          //   description: error.message || "Credenciales incorrectas",
+          //   variant: "destructive",
+          // });
+          setAuthError("Credenciales incorrectas. Por favor, inténtalo de nuevo.");
         }
       } catch (error) {
         console.error("Error al iniciar sesión:", error);
-        toast({
-          title: "Error al iniciar sesión",
-          description: "Ha ocurrido un error inesperado",
-          variant: "destructive",
-        });
+        // toast({
+        //   title: "Error al iniciar sesión",
+        //   description: "Ha ocurrido un error inesperado",
+        //   variant: "destructive",
+        // });
+        setAuthError("Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo más tarde.");
       }
     }
   };
@@ -84,9 +89,10 @@ export default function Login() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={cn(errors.password && "border-destructive")}
+          className={cn((errors.password || authError) && "border-destructive")}
         />
         {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+        {authError && <p className="text-sm text-destructive">{authError}</p>}
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? (

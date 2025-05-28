@@ -166,7 +166,7 @@ export default function Subjects() {
           </p>
         </div>
         <Button onClick={openCreateDialog}>
-          <Plus className="mr-2 h-4 w-4" /> Agregar Materia
+          <Plus className="mr-2 h-4 w-4" /> Añadir Materia
         </Button>
       </div>
 

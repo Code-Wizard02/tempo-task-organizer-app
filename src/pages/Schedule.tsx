@@ -311,7 +311,7 @@ const Schedule = () => {
           </p>
         </div>
         <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Agregar Clase
+          <Plus className="mr-2 h-4 w-4" /> Añadir Clase
         </Button>
       </div>
 

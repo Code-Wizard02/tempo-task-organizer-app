@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Camera } from "lucide-react";
+import { Loader2, Camera, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 
@@ -242,6 +242,7 @@ export default function Profile() {
 
               <div className="mt-6">
                 <Button type="submit" disabled={isLoading} className="w-full">
+                  <Save className="h-4 w-4 mr-2" />
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

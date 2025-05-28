@@ -132,7 +132,7 @@ export default function Professors() {
           </p>
         </div>
         <Button onClick={openCreateDialog}>
-          <Plus className="mr-2 h-4 w-4" /> Agregar Profesor
+          <Plus className="mr-2 h-4 w-4" /> Añadir Profesor
         </Button>
       </div>
       

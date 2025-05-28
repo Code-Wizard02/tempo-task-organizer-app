@@ -127,7 +127,7 @@ export default function Notes() {
           </div>
           <Button onClick={handleCreateNote}>
             <Plus className="mr-2 h-4 w-4" />
-            Nueva Nota
+            Añadir Nota
           </Button>
         </div>
 
@@ -207,7 +207,7 @@ export default function Notes() {
         <div className="block sm:hidden">
           <Button onClick={handleCreateNote} className="w-full">
             <Plus className="mr-2 h-4 w-4" />
-            Nueva Nota
+            Añadir Nota
           </Button>
         </div>
 
@@ -215,7 +215,7 @@ export default function Notes() {
         <div className="hidden sm:block absolute top-0 right-0 mt-4 mr-4">
           <Button onClick={handleCreateNote}>
             <Plus className="mr-2 h-4 w-4" />
-            Nueva Nota
+            Añadir Nota
           </Button>
         </div>
       </div>
@@ -289,7 +289,7 @@ export default function Notes() {
             </p>
             <Button onClick={handleCreateNote}>
               <Plus className="mr-2 h-4 w-4" />
-              Nueva Nota
+              Añadir Nota
             </Button>
           </CardContent>
         </Card>

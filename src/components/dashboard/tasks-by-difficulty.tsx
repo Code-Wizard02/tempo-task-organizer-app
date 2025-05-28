@@ -53,7 +53,7 @@ export function TasksByDifficulty() {
               <span className="ml-auto text-sm">{easyTasks.length} tareas</span>
             </div>
             <div className="mt-2 space-y-2">
-              {easyTasks.slice(0, 3).map((task) => (
+              {easyTasks.slice(0, 2).map((task) => (
                 <div
                   key={task.id}
                   className="flex items-center justify-between rounded-md border p-2"
@@ -68,9 +68,9 @@ export function TasksByDifficulty() {
                   </div>
                 </div>
               ))}
-              {easyTasks.length > 3 && (
+              {easyTasks.length > 2 && (
                 <div className="text-xs text-muted-foreground text-right">
-                  +{easyTasks.length - 3} más
+                  +{easyTasks.length - 2} más
                 </div>
               )}
             </div>
@@ -84,7 +84,7 @@ export function TasksByDifficulty() {
               <span className="ml-auto text-sm">{mediumTasks.length} tareas</span>
             </div>
             <div className="mt-2 space-y-2">
-              {mediumTasks.slice(0, 3).map((task) => (
+              {mediumTasks.slice(0, 2).map((task) => (
                 <div
                   key={task.id}
                   className="flex items-center justify-between rounded-md border p-2"
@@ -99,9 +99,9 @@ export function TasksByDifficulty() {
                   </div>
                 </div>
               ))}
-              {mediumTasks.length > 3 && (
+              {mediumTasks.length > 2 && (
                 <div className="text-xs text-muted-foreground text-right">
-                  +{mediumTasks.length - 3} más
+                  +{mediumTasks.length - 2} más
                 </div>
               )}
             </div>
@@ -115,7 +115,7 @@ export function TasksByDifficulty() {
               <span className="ml-auto text-sm">{hardTasks.length} tareas</span>
             </div>
             <div className="mt-2 space-y-2">
-              {hardTasks.slice(0, 3).map((task) => (
+              {hardTasks.slice(0, 2).map((task) => (
                 <div
                   key={task.id}
                   className="flex items-center justify-between rounded-md border p-2"
@@ -130,9 +130,9 @@ export function TasksByDifficulty() {
                   </div>
                 </div>
               ))}
-              {hardTasks.length > 3 && (
+              {hardTasks.length > 2 && (
                 <div className="text-xs text-muted-foreground text-right">
-                  +{hardTasks.length - 3} más
+                  +{hardTasks.length - 2} más
                 </div>
               )}
             </div>
