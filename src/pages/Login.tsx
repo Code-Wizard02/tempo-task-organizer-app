@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, Location } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,8 @@ export default function Login() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [authError, setAuthError] = useState<string | null>(null);
   const { signIn, isLoading } = useAuth();
+  const location = useLocation();
+  const emailVerificationRequired = location.state?.emailVerificationRequired;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -49,7 +51,9 @@ export default function Login() {
           //   description: error.message || "Credenciales incorrectas",
           //   variant: "destructive",
           // });
-          setAuthError("Credenciales incorrectas. Por favor, inténtalo de nuevo.");
+          setAuthError(
+            "Credenciales incorrectas. Por favor, inténtalo de nuevo."
+          );
         }
       } catch (error) {
         console.error("Error al iniciar sesión:", error);
@@ -58,13 +62,20 @@ export default function Login() {
         //   description: "Ha ocurrido un error inesperado",
         //   variant: "destructive",
         // });
-        setAuthError("Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo más tarde.");
+        setAuthError(
+          "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo más tarde."
+        );
       }
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {emailVerificationRequired && (
+        <p className="text-sm text-primary">
+          Por favor verifica tu correo electrónico antes de iniciar sesión.
+        </p>
+      )}
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -75,12 +86,17 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
           className={cn(errors.email && "border-destructive")}
         />
-        {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+        {errors.email && (
+          <p className="text-sm text-destructive">{errors.email}</p>
+        )}
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="password">Contraseña</Label>
-          <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+          <Link
+            to="/forgot-password"
+            className="text-sm text-primary hover:underline"
+          >
             ¿Olvidaste tu contraseña?
           </Link>
         </div>
@@ -91,7 +107,9 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
           className={cn((errors.password || authError) && "border-destructive")}
         />
-        {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+        {errors.password && (
+          <p className="text-sm text-destructive">{errors.password}</p>
+        )}
         {authError && <p className="text-sm text-destructive">{authError}</p>}
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
@@ -110,7 +128,7 @@ export default function Login() {
           Regístrate
         </Link>
       </div>
-      
+
       <div className="text-center mt-4 text-xs text-muted-foreground">
         <p>Credenciales de prueba:</p>
         <p>Email: demo@example.com</p>

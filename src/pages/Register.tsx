@@ -1,13 +1,13 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AuthLayout } from "@/components/layout/auth-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { set } from "date-fns";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -59,39 +59,48 @@ export default function Register() {
         if (error){
           console.error("Error al registrarse:", error);
           if(error.message?.includes("security purposes")||error.message?.includes("after")){
-            toast({
-            title: "Demasiados intentos ",
-            description: "Por razones de seguridad, debes esperar unos segundos antes de intentar registrarte nuevamente.", 
-            variant: "destructive",
+            // toast({
+            // title: "Demasiados intentos ",
+            // description: "Por razones de seguridad, debes esperar unos segundos antes de intentar registrarte nuevamente.", 
+            // variant: "destructive",
+            setErrors({
+              email: "Por razones de seguridad, debes esperar unos segundos antes de intentar registrarte nuevamente."
           });
           } else {
-            toast({
-            title: "Error al registrarse",
-            description: error.message === "Unable to validate email address: invalid format" 
-              ? "El formato del correo electrónico es inválido" 
-              : (error.message || "Error inesperado"),
-            variant: "destructive",
+            // toast({
+            // title: "Error al registrarse",
+            // description: error.message === "Unable to validate email address: invalid format" 
+            //   ? "El formato del correo electrónico es inválido" 
+            //   : (error.message || "Error inesperado"),
+            // variant: "destructive",
+            setErrors({
+              email: error.message === "Unable to validate email address: invalid format"
+                ? "El formato del correo electrónico es inválido"
+                : (error.message || "Error inesperado"),
           });
         }
       } else {
         console.log("Registro exitoso:", data);
-        toast({
-          title: "Registro exitoso",
-          description: "Ahora puedes iniciar sesión con tu cuenta.",
-          variant: "default",
-        });
+        // toast({
+        //   title: "Registro exitoso",
+        //   description: "Ahora puedes iniciar sesión con tu cuenta.",
+        //   variant: "default",
+        // });
           setTimeout(() => {
-            navigate("/login");
+            navigate("/login", { state: {emailVerificationRequired: true}});
         }, 1500); // 1.5 segundos
     }
 
         
       } catch (error) {
         console.error("Error al registrarse:", error);
-        toast({
-          title: "Error al registrarse",
-          description: "Ha ocurrido un error inesperado",
-          variant: "destructive",
+        // toast({
+        //   title: "Error al registrarse",
+        //   description: "Ha ocurrido un error inesperado",
+        //   variant: "destructive",
+        // });
+        setErrors({
+          email: "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo más tarde."
         });
       }
     }
