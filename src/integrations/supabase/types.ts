@@ -234,6 +234,7 @@ export type Database = {
           created_at: string
           description: string | null
           difficulty: string
+          priority: number | null
           due_date: string
           id: string
           professor_id: string | null
@@ -247,6 +248,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           difficulty: string
+          priority?: number | null
           due_date: string
           id?: string
           professor_id?: string | null
@@ -260,6 +262,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           difficulty?: string
+          priority?: number | null
           due_date?: string
           id?: string
           professor_id?: string | null

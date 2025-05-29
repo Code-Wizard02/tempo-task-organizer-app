@@ -17,8 +17,8 @@ export interface Task {
   description?: string;
   completed: boolean;
   dueDate: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
-  priority?: 'low' | 'medium' | 'high';
+  difficulty: 'easy' | 'medium' | 'hard';
+  priority?: number | null;
   user_id: string;
   subject_id?: string;
   created_at?: string;

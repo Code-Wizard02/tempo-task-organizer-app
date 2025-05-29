@@ -65,12 +65,12 @@ export default function Tasks() {
   const [filterDifficulty, setFilterDifficulty] = useState<
     TaskDifficulty | "all"
   >("all");
-
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -81,6 +81,7 @@ export default function Tasks() {
     professorId: "",
     completed: false,
   });
+  const [filterPriority, setFilterPriority] = useState<number | "all">("all");
 
   // Filtrado de tareas
   const filteredTasks = tasks.filter((task) => {
@@ -101,11 +102,14 @@ export default function Tasks() {
     const matchesDifficulty =
       filterDifficulty === "all" || task.difficulty === filterDifficulty;
 
-    return matchesSearch && matchesStatus && matchesDifficulty;
-  });
+    // Filtro por prioridad
+    const matchesPriority =
+      filterPriority === "all" || task.priority === filterPriority;
 
-  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    return (
+      matchesSearch && matchesStatus && matchesDifficulty && matchesPriority
+    );
+  });
 
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
@@ -265,6 +269,22 @@ export default function Tasks() {
     return <Badge className={styles[difficulty]}>{labels[difficulty]}</Badge>;
   };
 
+  const getPriorityBadge = (priority: number) => {
+    const styles = {
+      1: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+      2: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+      3: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+    };
+
+    const labels = {
+      1: "Alta",
+      2: "Media",
+      3: "Baja",
+    };
+
+    return <Badge className={styles[priority]}>{labels[priority]}</Badge>;
+  };
+
   const getStatusIcon = (completed: boolean, isOverdue: boolean) => {
     if (completed) {
       return <Check className="h-5 w-5 text-green-500" />;
@@ -339,7 +359,15 @@ export default function Tasks() {
               onValueChange={(value) => setFilterStatus(value as any)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Estado" />
+                {/* <SelectValue placeholder="Estado" /> */}
+                <SelectValue>  
+                  {filterStatus === "all"
+                    ? "Filtrar por estado"
+                    : filterStatus === "pending"
+                    ? "Pendientes"
+                    : "Completadas"}
+                </SelectValue>
+
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
@@ -349,7 +377,7 @@ export default function Tasks() {
             </Select>
 
             {/* Filtro por dificultad */}
-            <Select
+            {/* <Select
               value={filterDifficulty}
               onValueChange={(value) => setFilterDifficulty(value as any)}
             >
@@ -361,6 +389,33 @@ export default function Tasks() {
                 <SelectItem value="easy">Fácil</SelectItem>
                 <SelectItem value="medium">Media</SelectItem>
                 <SelectItem value="hard">Difícil</SelectItem>
+              </SelectContent>
+            </Select> */}
+
+            <Select
+              value={filterPriority.toString()}
+              onValueChange={(value) =>
+                setFilterPriority(value === "all" ? "all" : Number(value))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue>
+                  {filterPriority === "all"
+                    ? "Filtrar por prioridad"
+                    : filterPriority === 1
+                    ? "Alta"
+                    : filterPriority === 2
+                    ? "Media"
+                    : filterPriority === 3
+                    ? "Baja"
+                    : "Sin prioridad"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="1">Alta</SelectItem>
+                <SelectItem value="2">Media</SelectItem>
+                <SelectItem value="3">Baja</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -392,7 +447,8 @@ export default function Tasks() {
                   <TableRow>
                     <TableHead></TableHead>
                     <TableHead>Título</TableHead>
-                    <TableHead className="text-center">Dificultad</TableHead>
+                    {/* <TableHead className="text-center">Dificultad</TableHead> */}
+                    <TableHead className="text-center">Prioridad</TableHead>
                     <TableHead className="text-center">Materias</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
                     <TableHead className="text-center">Acciones</TableHead>
@@ -445,8 +501,24 @@ export default function Tasks() {
                         </TableCell>
 
                         {/* Dificultad */}
-                        <TableCell className="text-center">
+                        {/* <TableCell className="text-center">
                           {getDifficultyBadge(task.difficulty)}
+                        </TableCell> */}
+
+                        {/* <TableCell className="text-center">
+                          {task.priority === 1
+                            ? "Alta"
+                            : task.priority === 2
+                            ? "Media"
+                            : task.priority === 3
+                            ? "Baja"
+                            : "Sin prioridad"}  
+                        </TableCell> */}
+
+                        <TableCell className="text-center">
+                          {task.priority
+                            ? getPriorityBadge(task.priority)
+                            : "Sin prioridad"}
                         </TableCell>
 
                         {/* Materia */}
