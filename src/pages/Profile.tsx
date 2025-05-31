@@ -11,11 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Camera, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
+import { PushNotificationManager } from "@/components/PushNotificationManager";
 
 export default function Profile() {
   const { user, profile, updateProfile } = useAuth();
   const { toast } = useToast();
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
@@ -92,42 +93,42 @@ export default function Profile() {
     if (!e.target.files || e.target.files.length === 0) {
       return;
     }
-    
+
     const file = e.target.files[0];
     const fileExt = file.name.split('.').pop();
     const filePath = `${user.id}-${uuidv4()}.${fileExt}`;
-    
+
     setIsUploading(true);
-    
+
     try {
       // 1. Subir el archivo a Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
-      
+
       if (uploadError) throw uploadError;
-      
+
       // 2. Obtener la URL pública del archivo
       const { data } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
-      
+
       if (!data.publicUrl) throw new Error("No se pudo obtener la URL de la imagen");
-      
+
       // 3. Actualizar el perfil del usuario con la URL del avatar
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           avatar_url: data.publicUrl,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
-      
+
       if (updateError) throw updateError;
-      
+
       // 4. Refrescar el perfil en el contexto usando updateProfile
       await updateProfile({ avatar_url: data.publicUrl });
-      
+
       toast({
         title: "Avatar actualizado",
         description: "Tu foto de perfil ha sido actualizada exitosamente.",
@@ -147,7 +148,7 @@ export default function Profile() {
   };
 
   // Iniciales para el avatar fallback
-  const initials = profile?.full_name 
+  const initials = profile?.full_name
     ? profile.full_name.split(" ").map((name) => name[0]).join("").toUpperCase()
     : user.email ? user.email.charAt(0).toUpperCase() : "U";
 
@@ -172,10 +173,10 @@ export default function Profile() {
                         {initials}
                       </AvatarFallback>
                     </Avatar>
-                    
+
                     <div className="absolute bottom-0 right-0">
-                      <Label 
-                        htmlFor="avatar-upload" 
+                      <Label
+                        htmlFor="avatar-upload"
                         className="cursor-pointer text-primary-foreground rounded-full p-2 shadow-md transition-colors"
                       >
                         {isUploading ? (
@@ -254,6 +255,20 @@ export default function Profile() {
                 </Button>
               </div>
             </form>
+          </CardContent>
+          <CardContent>
+            <hr className="my-8 border-t border-muted" />
+            {/* Sección de notificaciones */}
+            <div className="mt-8">
+              <CardTitle>Preferencias</CardTitle>
+              <h4 className="text-xl font-semibold mb-2 mt-4">Notificaciones</h4>
+              <div className="bg-card rounded-lg shadow">
+                <p className="text-sm mb-4 px-4">
+                  Activa las notificaciones push para recibir alertas sobre tus tareas pendientes.
+                </p>
+                <PushNotificationManager/>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

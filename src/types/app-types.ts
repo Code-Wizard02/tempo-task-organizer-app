@@ -59,3 +59,13 @@ export interface ScheduleEntry {
   created_at: string;
   updated_at: string;
 }
+
+export interface PushSubscriptionData {
+  user_id: string;
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  subscription: any;
+}

@@ -175,3 +175,41 @@ self.addEventListener('fetch', (event) => {
 //   );
 // });
 
+self.addEventListener('push', (event) => {
+  console.log('Notificación push recibida', event);
+  
+  let notificationData = {};
+  try {
+    notificationData = event.data ? event.data.json() : {};
+  } catch (e) {
+    notificationData = { title: 'Notificación', body: 'Nueva notificación' };
+  }
+  
+  event.waitUntil(
+    self.registration.showNotification(notificationData.title || 'Notificación', {
+      body: notificationData.body || 'Tienes una notificación',
+      icon: '/icon-192x192.png'
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close(); // Cierra la notificación al hacer clic
+  const urlToOpen = event.notification.data || '/';
+
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window'}).then((windowClients) => {
+        for (let i = 0; i < windowClients.length; i++) {
+          let client = windowClients[i];
+          if (client.url === urlToOpen && 'focus' in client) {
+            return client.focus(); // Si ya hay una ventana abierta con la URL, la enfoca
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen); // Si no, abre una nueva ventana
+        }
+      })
+    );
+  }
+);

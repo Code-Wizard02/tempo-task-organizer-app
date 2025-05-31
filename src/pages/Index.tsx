@@ -113,7 +113,7 @@ export default function Index() {
       </main>
       <footer className="py-6 md:py-10 border-t">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>TaskHub © 2023 - Gestión académica para estudiantes</p>
+          <p>TaskHub © 2025 - Gestión de Tiempo y Tareas Academicas</p>
         </div>
       </footer>
     </div>

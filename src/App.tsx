@@ -25,8 +25,13 @@ import Notes from "./pages/Notes";
 
 function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isAndroid, setIsAndroid] = useState<boolean>(false);
+  const [isIOS, setIsIOS] = useState<boolean>(false);
 
   useEffect(() => {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    setIsAndroid(isAndroid);
     const handleBeforeInstallPrompt = (event: any) => {
       event.preventDefault();
       setDeferredPrompt(event);
