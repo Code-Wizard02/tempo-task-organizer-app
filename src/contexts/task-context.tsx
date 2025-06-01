@@ -81,6 +81,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
               ? item.due_date.split("T")[1].substring(0, 5)
               : "23:59",
             difficulty: item.difficulty as TaskDifficulty,
+            priority: item.priority,
             subjectId: item.subject_id || "",
             professorId: item.professor_id || "",
             createdAt: item.created_at,
@@ -129,6 +130,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
             completed: task.completed,
             due_date: dueDateTime,
             difficulty: task.difficulty,
+            priority: task.priority,
             subject_id: task.subjectId || null,
             professor_id: task.professorId || null,
             user_id: user.id,
@@ -151,6 +153,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
             ? data[0].due_date.split("T")[1].substring(0, 5)
             : "23:59",
           difficulty: data[0].difficulty as TaskDifficulty,
+          priority: data[0].priority,
           subjectId: data[0].subject_id || "",
           professorId: data[0].professor_id || "",
           createdAt: data[0].created_at,
@@ -204,6 +207,8 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
       if (updatedFields.difficulty !== undefined)
         updateData.difficulty = updatedFields.difficulty;
+      if (updatedFields.priority !== undefined)
+        updateData.priority = updatedFields.priority;
       if (updatedFields.subjectId !== undefined)
         updateData.subject_id = updatedFields.subjectId || null;
       if (updatedFields.professorId !== undefined)
@@ -316,19 +321,18 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         tasks.map((task) =>
           task.id === id
             ? {
-                ...task,
-                completed: newStatus,
-                updatedAt: new Date().toISOString(),
-              }
+              ...task,
+              completed: newStatus,
+              updatedAt: new Date().toISOString(),
+            }
             : task
         )
       );
 
       toast({
         title: newStatus ? "Tarea completada" : "Tarea pendiente",
-        description: `La tarea ha sido marcada como ${
-          newStatus ? "completada" : "pendiente"
-        }.`,
+        description: `La tarea ha sido marcada como ${newStatus ? "completada" : "pendiente"
+          }.`,
         duration: 3000,
       });
     } catch (error) {

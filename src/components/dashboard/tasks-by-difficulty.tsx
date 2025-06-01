@@ -2,11 +2,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTasks } from "@/contexts/task-context";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Clock } from "lucide-react";
+import { Book, CheckCircle, Clock } from "lucide-react";
 
 export function TasksByDifficulty() {
   const { tasks, getTasksByDifficulty } = useTasks();
-  
+
   const easyTasks = getTasksByDifficulty("easy");
   const mediumTasks = getTasksByDifficulty("medium");
   const hardTasks = getTasksByDifficulty("hard");
@@ -40,7 +40,9 @@ export function TasksByDifficulty() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Tareas por Dificultad</CardTitle>
+        <CardTitle className="flex items-center">
+          <Book className="mr-2 h-5 w-5" />
+          Tareas por Dificultad</CardTitle>
         <CardDescription>Organiza tus tareas según su nivel de dificultad</CardDescription>
       </CardHeader>
       <CardContent>

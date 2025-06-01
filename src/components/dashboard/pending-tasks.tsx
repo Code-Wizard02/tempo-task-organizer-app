@@ -16,6 +16,7 @@ import { Link } from "react-router-dom";
 import { Button } from "../ui/button";
 import { useEffect, useState } from "react";
 import { PendingTaskItem } from "./pendingTaskItem";
+import { Clock } from "lucide-react";
 
 export function PendingTasks() {
   const { getPendingTasks } = useTasks();
@@ -32,7 +33,10 @@ export function PendingTasks() {
   return (
     <Card className="col-span-full md:col-span-1">
       <CardHeader>
-        <CardTitle>Tareas Pendientes</CardTitle>
+        <CardTitle className="flex items-center">
+        <Clock className="mr-2 h-4 w-4 " />
+          Tareas Pendientes
+        </CardTitle>
         <CardDescription>Próximas tareas a completar</CardDescription>
       </CardHeader>
       <CardContent>

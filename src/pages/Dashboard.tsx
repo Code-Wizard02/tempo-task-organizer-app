@@ -6,13 +6,19 @@ import { TasksByDifficulty } from "@/components/dashboard/tasks-by-difficulty";
 import { PendingTasks } from "@/components/dashboard/pending-tasks";
 import { useTasks } from "@/contexts/task-context";
 import { useAuth } from "@/contexts/auth-context";
+import { TasksByPriority } from "@/components/dashboard/task-by-priority";
+import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
+import { TasksBySubject } from "@/components/dashboard/task-by-subject";
+import { WeeklyProductivity } from "@/components/dashboard/weekly-productivity";
+import { CompletionTrendChart } from "@/components/dashboard/completition-trend-chart";
+import { ActivityHeatmap } from "@/components/dashboard/activity-headmap";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
-  const { 
-    getTotalTasks, 
-    getCompletedTasksCount, 
-    getPendingTasksCount 
+  const {
+    getTotalTasks,
+    getCompletedTasksCount,
+    getPendingTasksCount
   } = useTasks();
 
   const totalTasks = getTotalTasks();
@@ -51,14 +57,20 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <TasksByPriority />
+        {/* <UpcomingDeadlines /> */}
         <TaskPieChart
           completed={completedTasks}
           pending={pendingTasks}
           title="Progreso de Tareas"
           description="Distribución de tareas completadas vs pendientes"
         />
-        <TasksByDifficulty />
         <PendingTasks />
+        <TasksByDifficulty />
+        <TasksBySubject />
+        <WeeklyProductivity />
+        {/* <CompletionTrendChart /> */}
+        {/* <ActivityHeatmap/> */}
       </div>
     </div>
   );

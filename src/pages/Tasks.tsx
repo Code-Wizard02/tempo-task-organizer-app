@@ -77,6 +77,7 @@ export default function Tasks() {
     dueDate: format(new Date(), "yyyy-MM-dd"),
     dueTime: "23:59",
     difficulty: "medium" as TaskDifficulty,
+    priority: 1,
     subjectId: "",
     professorId: "",
     completed: false,
@@ -95,8 +96,8 @@ export default function Tasks() {
       filterStatus === "all"
         ? true
         : filterStatus === "pending"
-        ? !task.completed
-        : task.completed;
+          ? !task.completed
+          : task.completed;
 
     // Filtro por dificultad
     const matchesDifficulty =
@@ -142,13 +143,39 @@ export default function Tasks() {
     setIsDetailsDialogOpen(true);
   };
 
+  const calculatePriority = (taskData: {
+    dueDate: string;
+    dueTime?: string;
+    difficulty: TaskDifficulty;
+  }): number => {
+    const now = new Date();
+    const dueDate = new Date(`${taskData.dueDate}T${taskData.dueTime || "23:59"}`);
+    const daysDifference =
+      (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
+    if (daysDifference < 3 && taskData.difficulty === "hard") {
+      return 1; // Alta prioridad
+    } else if (daysDifference < 7) {
+      return 2; // Media prioridad
+    } else {
+      return 3; // Baja prioridad
+    }
+  };
+
   const handleAddTask = () => {
+
+    const calculatedPriority = calculatePriority({
+      dueDate: newTask.dueDate,
+      dueTime: newTask.dueTime,
+      difficulty: newTask.difficulty,
+    });
     addTask({
       title: newTask.title,
       description: newTask.description,
       dueDate: newTask.dueDate,
       dueTime: newTask.dueTime,
       difficulty: newTask.difficulty,
+      priority: calculatedPriority,
       subjectId: newTask.subjectId,
       professorId: newTask.professorId,
       completed: newTask.completed,
@@ -159,12 +186,19 @@ export default function Tasks() {
 
   const handleEditTask = () => {
     if (currentTask) {
+      const calculatedPriority = calculatePriority({
+        dueDate: currentTask.dueDate,
+        dueTime: currentTask.dueTime,
+        difficulty: currentTask.difficulty,
+      });
+
       updateTask(currentTask.id, {
         title: currentTask.title,
         description: currentTask.description,
         dueDate: currentTask.dueDate,
         dueTime: currentTask.dueTime,
         difficulty: currentTask.difficulty,
+        priority: currentTask.priority,
         subjectId: currentTask.subjectId,
         professorId: currentTask.professorId,
       });
@@ -188,6 +222,7 @@ export default function Tasks() {
       dueDate: format(new Date(), "yyyy-MM-dd"),
       dueTime: "23:59",
       difficulty: "medium",
+      priority: 1,
       subjectId: "",
       professorId: "",
       completed: false,
@@ -360,12 +395,12 @@ export default function Tasks() {
             >
               <SelectTrigger>
                 {/* <SelectValue placeholder="Estado" /> */}
-                <SelectValue>  
+                <SelectValue>
                   {filterStatus === "all"
                     ? "Filtrar por estado"
                     : filterStatus === "pending"
-                    ? "Pendientes"
-                    : "Completadas"}
+                      ? "Pendientes"
+                      : "Completadas"}
                 </SelectValue>
 
               </SelectTrigger>
@@ -403,12 +438,12 @@ export default function Tasks() {
                   {filterPriority === "all"
                     ? "Filtrar por prioridad"
                     : filterPriority === 1
-                    ? "Alta"
-                    : filterPriority === 2
-                    ? "Media"
-                    : filterPriority === 3
-                    ? "Baja"
-                    : "Sin prioridad"}
+                      ? "Alta"
+                      : filterPriority === 2
+                        ? "Media"
+                        : filterPriority === 3
+                          ? "Baja"
+                          : "Sin prioridad"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -434,8 +469,8 @@ export default function Tasks() {
               <h3 className="mt-2 text-lg font-semibold">No hay tareas</h3>
               <p className="text-sm text-muted-foreground">
                 {searchTerm ||
-                filterStatus !== "all" ||
-                filterDifficulty !== "all"
+                  filterStatus !== "all" ||
+                  filterDifficulty !== "all"
                   ? "No se encontraron tareas con los filtros aplicados"
                   : "Añade tu primera tarea para comenzar"}
               </p>
@@ -493,7 +528,7 @@ export default function Tasks() {
                           <div
                             className={cn(
                               task.completed &&
-                                "line-through text-muted-foreground"
+                              "line-through text-muted-foreground"
                             )}
                           >
                             {task.title}
@@ -888,7 +923,7 @@ export default function Tasks() {
                     </SelectTrigger>
                     <SelectContent>
                       {getFilteredProfessors(currentTask.subjectId).length >
-                      0 ? (
+                        0 ? (
                         getFilteredProfessors(currentTask.subjectId).map(
                           (professor) => (
                             <SelectItem key={professor.id} value={professor.id}>
@@ -905,7 +940,7 @@ export default function Tasks() {
                   </Select>
                   {currentTask.subjectId &&
                     getFilteredProfessors(currentTask.subjectId).length ===
-                      0 && (
+                    0 && (
                       <p className="text-xs text-muted-foreground">
                         Esta materia no tiene profesores asignados. Asigna un
                         profesor a esta materia primero.
@@ -1031,15 +1066,15 @@ export default function Tasks() {
                     selectedTask.difficulty === "easy"
                       ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                       : selectedTask.difficulty === "medium"
-                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                      : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                        : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
                   )}
                 >
                   {selectedTask.difficulty === "easy"
                     ? "Fácil"
                     : selectedTask.difficulty === "medium"
-                    ? "Media"
-                    : "Difícil"}
+                      ? "Media"
+                      : "Difícil"}
                 </Badge>
               </Card>
 
