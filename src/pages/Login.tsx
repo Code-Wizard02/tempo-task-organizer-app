@@ -17,6 +17,7 @@ export default function Login() {
   const { signIn, isLoading } = useAuth();
   const location = useLocation();
   const emailVerificationRequired = location.state?.emailVerificationRequired;
+  const passwordResetSuccess = location.state?.passwordResetSuccess;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -74,6 +75,11 @@ export default function Login() {
       {emailVerificationRequired && (
         <p className="text-sm text-primary">
           Por favor verifica tu correo electrónico antes de iniciar sesión.
+        </p>
+      )}
+      {passwordResetSuccess && (
+        <p className="text-sm text-green-500">
+          Tu contraseña ha sido actualizada correctamente. Ya puedes iniciar sesión con tu nueva contraseña.
         </p>
       )}
       <div className="space-y-2">

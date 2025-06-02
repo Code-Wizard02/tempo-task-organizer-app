@@ -22,6 +22,8 @@ import { ScheduleProvider } from "./contexts/schedule-context";
 import Schedule from "./pages/Schedule";
 import { NotesProvider } from "./contexts/notes-context";
 import Notes from "./pages/Notes";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -72,6 +74,8 @@ function App() {
                     <NotesProvider>
                       <Routes>
                         <Route path="/" element={<Index />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
                         <Route
                           path="/login"
                           element={
