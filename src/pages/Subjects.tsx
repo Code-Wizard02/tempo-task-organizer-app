@@ -66,6 +66,9 @@ export default function Subjects() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<string | null>(null);
 
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [subjectToDelete, setSubjectToDelete] = useState<string | null>(null);
+
   // Filter and sort states
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<"name" | "professor_id">("name");
@@ -129,12 +132,21 @@ export default function Subjects() {
     }
   };
 
-  const handleDeleteSubject = (id: string) => {
-    deleteSubject(id);
-    toast({
-      title: "Materia eliminada",
-      description: "La materia ha sido eliminada correctamente.",
-    });
+  const openDeleteDialog = (id: string) => {
+    setSubjectToDelete(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteSubject = () => {
+    if (subjectToDelete) {
+      deleteSubject(subjectToDelete);
+      toast({
+        title: "Materia eliminada",
+        description: "La materia ha sido eliminada correctamente.",
+      });
+      setIsDeleteDialogOpen(false);
+      setSubjectToDelete(null);
+    }
   };
 
   const onSubmit = (data: SubjectFormValues) => {
@@ -291,7 +303,7 @@ export default function Subjects() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDeleteSubject(subject.id)}
+                          onClick={() => openDeleteDialog(subject.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -389,11 +401,10 @@ export default function Subjects() {
                             <button
                               key={color}
                               type="button"
-                              className={`w-8 h-8 rounded-full border-2 ${
-                                field.value === color
+                              className={`w-8 h-8 rounded-full border-2 ${field.value === color
                                   ? "border-black"
                                   : "border-transparent"
-                              }`}
+                                }`}
                               style={{ backgroundColor: color }}
                               onClick={() => field.onChange(color)}
                             />
@@ -426,6 +437,41 @@ export default function Subjects() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar esta materia? Esta acción no se
+              puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          {subjectToDelete && (
+            <div className="py-4">
+              <p className="font-medium">
+                {subjects.find(s => s.id === subjectToDelete)?.name}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Al eliminar esta materia, podría afectar a las tareas relacionadas.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setSubjectToDelete(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteSubject}>
+              Eliminar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

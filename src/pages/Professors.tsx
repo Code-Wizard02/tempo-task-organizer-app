@@ -35,7 +35,10 @@ export default function Professors() {
   const [sortField, setSortField] = useState<'name' | 'email'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [subjectFilter, setSubjectFilter] = useState<string>("");
-  
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [professorToDelete, setProfessorToDelete] = useState<string | null>(null);
+
   const form = useForm<ProfessorFormValues>({
     resolver: zodResolver(professorSchema),
     defaultValues: {
@@ -44,18 +47,18 @@ export default function Professors() {
       subjectIds: [],
     },
   });
-  
+
   // Filtered and sorted professors
   const filteredProfessors = useMemo(() => {
     return professors
       .filter(professor => {
-        const matchesSearch = 
-          professor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        const matchesSearch =
+          professor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           professor.email.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        const matchesSubject = 
+
+        const matchesSubject =
           !subjectFilter || professor.subjectIds.includes(subjectFilter);
-        
+
         return matchesSearch && matchesSubject;
       })
       .sort((a, b) => {
@@ -95,8 +98,21 @@ export default function Professors() {
     }
   };
 
-  const handleDeleteProfessor = (id: string) => {
-    deleteProfessor(id);
+  const openDeleteDialog = (id: string) => {
+    setProfessorToDelete(id);
+    setIsDeleteDialogOpen(true);
+  }
+
+  const handleDeleteProfessor = () => {
+    if (professorToDelete) {
+      deleteProfessor(professorToDelete);
+      toast({
+        title: "Profesor eliminado",
+        description: "El profesor ha sido eliminado correctamente",
+      });
+      setIsDeleteDialogOpen(false);
+      setProfessorToDelete(null);
+    }
   };
 
   const onSubmit = (data: ProfessorFormValues) => {
@@ -109,7 +125,7 @@ export default function Professors() {
     } else {
       const newProfessor = {
         name: data.name,
-        full_name: data.name, 
+        full_name: data.name,
         email: data.email,
         subjectIds: data.subjectIds,
       };
@@ -135,7 +151,7 @@ export default function Professors() {
           <Plus className="mr-2 h-4 w-4" /> Añadir Profesor
         </Button>
       </div>
-      
+
       {/* Filters */}
       <Card className="mb-6">
         <CardHeader className="pb-3">
@@ -152,7 +168,7 @@ export default function Professors() {
                 className="pl-9"
               />
             </div>
-            
+
             <Select
               value={subjectFilter}
               onValueChange={setSubjectFilter}
@@ -186,7 +202,7 @@ export default function Professors() {
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>Lista de Profesores</CardTitle>
@@ -205,8 +221,8 @@ export default function Professors() {
                       <div className="flex items-center">
                         Nombre
                         {sortField === 'name' && (
-                          sortDirection === 'asc' ? 
-                            <SortAsc className="ml-1 h-4 w-4" /> : 
+                          sortDirection === 'asc' ?
+                            <SortAsc className="ml-1 h-4 w-4" /> :
                             <SortDesc className="ml-1 h-4 w-4" />
                         )}
                       </div>
@@ -215,8 +231,8 @@ export default function Professors() {
                       <div className="flex items-center">
                         Correo Electrónico
                         {sortField === 'email' && (
-                          sortDirection === 'asc' ? 
-                            <SortAsc className="ml-1 h-4 w-4" /> : 
+                          sortDirection === 'asc' ?
+                            <SortAsc className="ml-1 h-4 w-4" /> :
                             <SortDesc className="ml-1 h-4 w-4" />
                         )}
                       </div>
@@ -234,8 +250,8 @@ export default function Professors() {
                         {professor.subjectIds.map(subjectId => {
                           const subject = subjects.find(s => s.id === subjectId);
                           return subject ? (
-                            <span 
-                              key={subject.id} 
+                            <span
+                              key={subject.id}
                               className="inline-block px-2 py-1 mr-1 mb-1 rounded-md text-xs"
                               style={{ backgroundColor: subject.color, color: '#fff' }}
                             >
@@ -248,7 +264,7 @@ export default function Professors() {
                         <Button variant="ghost" size="icon" onClick={() => openEditDialog(professor.id)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteProfessor(professor.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(professor.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -336,8 +352,8 @@ export default function Professors() {
                       {field.value.map((subjectId) => {
                         const subject = subjects.find(s => s.id === subjectId);
                         return subject ? (
-                          <div 
-                            key={subject.id} 
+                          <div
+                            key={subject.id}
                             className="flex items-center px-2 py-1 rounded-md text-xs"
                             style={{ backgroundColor: subject.color, color: '#fff' }}
                           >
@@ -368,6 +384,41 @@ export default function Professors() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar este profesor? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          {professorToDelete && (
+            <div className="py-4">
+              <p className="font-medium">
+                {professors.find(p => p.id === professorToDelete)?.name}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Al eliminar este profesor, también se eliminará su relación con las materias asignadas.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setProfessorToDelete(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteProfessor}>
+              Eliminar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

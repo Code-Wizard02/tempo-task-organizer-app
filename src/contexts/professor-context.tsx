@@ -116,7 +116,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
   // Añadir profesor
   const addProfessor = async (professor: Omit<Professor, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('professors')
@@ -143,19 +143,19 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
           createdAt: data[0].created_at,
           updatedAt: data[0].updated_at
         };
-        
+
         // Agregar asignaciones de materias si hay alguna
         if (professor.subjectIds && professor.subjectIds.length > 0) {
           for (const subjectId of professor.subjectIds) {
             await assignSubjectToProfessor(newProfessor.id, subjectId);
           }
-          
+
           // Actualizar los subjectIds en el objeto del profesor
           newProfessor.subjectIds = [...professor.subjectIds];
         }
-        
+
         setProfessors([newProfessor, ...professors]);
-        
+
         toast({
           title: "Profesor creado",
           description: `El profesor "${professor.name}" ha sido añadido exitosamente.`,
@@ -174,7 +174,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
   // Actualizar profesor
   const updateProfessor = async (id: string, updatedFields: Partial<Professor>) => {
     if (!user) return;
-    
+
     try {
       const updateData: any = {};
       if (updatedFields.name) {
@@ -197,23 +197,23 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
       // Actualizar las materias asignadas si han cambiado
       if (updatedFields.subjectIds) {
         const currentProfessor = professors.find(p => p.id === id);
-        
+
         if (currentProfessor) {
           // Materias a agregar (están en updatedFields.subjectIds pero no en currentProfessor.subjectIds)
           const subjectsToAdd = updatedFields.subjectIds.filter(
             subjectId => !currentProfessor.subjectIds.includes(subjectId)
           );
-          
+
           // Materias a eliminar (están en currentProfessor.subjectIds pero no en updatedFields.subjectIds)
           const subjectsToRemove = currentProfessor.subjectIds.filter(
             subjectId => !updatedFields.subjectIds.includes(subjectId)
           );
-          
+
           // Agregar nuevas materias
           for (const subjectId of subjectsToAdd) {
             await assignSubjectToProfessor(id, subjectId);
           }
-          
+
           // Eliminar materias
           for (const subjectId of subjectsToRemove) {
             await removeSubjectFromProfessor(id, subjectId);
@@ -221,14 +221,14 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      setProfessors(professors.map(professor => 
-        professor.id === id ? { 
-          ...professor, 
+      setProfessors(professors.map(professor =>
+        professor.id === id ? {
+          ...professor,
           ...updatedFields,
           updatedAt: new Date().toISOString()
         } : professor
       ));
-      
+
       toast({
         title: "Profesor actualizado",
         description: "La información del profesor ha sido actualizada exitosamente.",
@@ -246,10 +246,30 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
   // Eliminar profesor
   const deleteProfessor = async (id: string) => {
     if (!user) return;
-    
+
     try {
       const professorToDelete = professors.find(p => p.id === id);
-      
+
+      const { error: subjectsError } = await supabase
+        .from('subjects')
+        .update({ professor_id: null })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (subjectsError) {
+        throw subjectsError;
+      }
+
+      const { error: relationsError } = await supabase
+        .from('professor_subjects')
+        .delete()
+        .eq('professor_id', id)
+        .eq('user_id', user.id);
+
+      if (relationsError) {
+        throw relationsError;
+      }
+
       const { error } = await supabase
         .from('professors')
         .delete()
@@ -261,7 +281,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
       }
 
       setProfessors(professors.filter(professor => professor.id !== id));
-      
+
       toast({
         title: "Profesor eliminado",
         description: `El profesor "${professorToDelete?.name}" ha sido eliminado.`,
@@ -279,7 +299,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
   // Asignar materia a profesor
   const assignSubjectToProfessor = async (professorId: string, subjectId: string) => {
     if (!user || !subjectId) return;
-    
+
     try {
       const { error } = await supabase
         .from('professor_subjects')
@@ -321,7 +341,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
   // Eliminar materia de profesor
   const removeSubjectFromProfessor = async (professorId: string, subjectId: string) => {
     if (!user) return;
-    
+
     try {
       const { error } = await supabase
         .from('professor_subjects')
@@ -365,12 +385,12 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ProfessorContext.Provider 
-      value={{ 
-        professors, 
+    <ProfessorContext.Provider
+      value={{
+        professors,
         isLoading,
-        addProfessor, 
-        updateProfessor, 
+        addProfessor,
+        updateProfessor,
         deleteProfessor,
         getProfessor,
         getProfessorsBySubject,

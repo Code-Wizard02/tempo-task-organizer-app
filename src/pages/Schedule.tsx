@@ -143,6 +143,9 @@ const Schedule = () => {
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
   const [activeDay, setActiveDay] = useState<string>("monday");
 
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<any>(null);
+
   // Form state for adding/editing schedule entries
   const [formData, setFormData] = useState({
     subject_id: "",
@@ -243,17 +246,35 @@ const Schedule = () => {
   };
 
   // Delete schedule entry
+  // const handleDeleteEntry = async () => {
+  //   if (!selectedEntry) return;
+
+  //   try {
+  //     await deleteScheduleEntry(selectedEntry.id);
+  //     setIsEditDialogOpen(false);
+  //     setSelectedEntry(null);
+  //   } catch (error) {
+  //     console.error("Error deleting schedule entry:", error);
+  //   }
+  // };
   const handleDeleteEntry = async () => {
-    if (!selectedEntry) return;
+    if (!entryToDelete) return;
 
     try {
-      await deleteScheduleEntry(selectedEntry.id);
-      setIsEditDialogOpen(false);
+      await deleteScheduleEntry(entryToDelete.id);
+      setIsDeleteDialogOpen(false);
+      setEntryToDelete(null);
+      setIsEditDialogOpen(false); // Also close the edit dialog
       setSelectedEntry(null);
     } catch (error) {
       console.error("Error deleting schedule entry:", error);
     }
   };
+
+  const openDeleteDialog = () => {
+    setEntryToDelete(selectedEntry);
+    setIsDeleteDialogOpen(true);
+  }
 
   // Update schedule entry
   const handleUpdateEntry = async () => {
@@ -611,7 +632,7 @@ const Schedule = () => {
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="destructive"
-              onClick={handleDeleteEntry}
+              onClick={openDeleteDialog}
               className="sm:mr-auto"
             >
               <Trash2 className="mr-2 h-4 w-4" /> Eliminar
@@ -635,6 +656,62 @@ const Schedule = () => {
                 Actualizar
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar esta clase del horario? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          {entryToDelete && (
+            <div className="py-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div
+                  className="w-4 h-4 rounded-full"
+                  style={{
+                    backgroundColor: subjects.find(s => s.id === entryToDelete.subject_id)?.color || "#888"
+                  }}
+                />
+                <p className="font-medium">
+                  {subjects.find(s => s.id === entryToDelete.subject_id)?.name || "Clase"}
+                </p>
+              </div>
+              <div className="flex items-center text-sm text-muted-foreground gap-2">
+                <Clock className="h-3.5 w-3.5" />
+                <span>{entryToDelete.start_time} - {entryToDelete.end_time}</span>
+              </div>
+              {entryToDelete.days_of_week?.length > 0 && (
+                <div className="mt-2 text-sm text-muted-foreground">
+                  <span className="font-medium">Días: </span>
+                  {entryToDelete.days_of_week.map((day: string) => dayNameMap[day]).join(", ")}
+                </div>
+              )}
+              {entryToDelete.location && (
+                <div className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5" />
+                  <span>{entryToDelete.location}</span>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setEntryToDelete(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteEntry}>
+              Eliminar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

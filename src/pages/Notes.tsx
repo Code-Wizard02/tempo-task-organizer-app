@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,17 @@ import { useSubjects } from "@/contexts/subject-context";
 import { NoteEditor } from "@/components/notes/note-editor";
 import { SubjectFolder } from "@/components/notes/subject-folder";
 import { NoteCard } from "@/components/notes/note-card";
+import { toast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { FileText } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Notes() {
   const { notes, deleteNote } = useNotes();
@@ -36,6 +47,21 @@ export default function Notes() {
   const [sortBy, setSortBy] = useState<"date" | "title">("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
+  const { toast } = useToast();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<any>(null);
+
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!isDeleteDialogOpen) {
+      // Reset the deleting state when dialog closes
+      setTimeout(() => {
+        setIsDeleting(false);
+        setNoteToDelete(null);
+      }, 200); // Small delay to ensure dialog animation completes
+    }
+  }, [isDeleteDialogOpen]);
   // Calcular carpetas de materias con notas
   const subjectFolders = useMemo(() => {
     const subjectsWithNotes = subjects
@@ -90,13 +116,52 @@ export default function Notes() {
   };
 
   const handleEditNote = (note: any) => {
+    if (isDeleting) return;
     setEditingNote(note);
     setIsEditorOpen(true);
   };
 
-  const handleDeleteNote = async (noteId: string) => {
-    if (window.confirm("¿Estás seguro de que quieres eliminar esta nota?")) {
-      await deleteNote(noteId);
+  const openDeleteDialog = (note: any, event?: React.MouseEvent) => {
+    // If event exists, stop propagation
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
+    // Set deleting mode
+    setIsDeleting(true);
+    setNoteToDelete(note);
+
+    // Close editor if open
+    if (isEditorOpen) {
+      setIsEditorOpen(false);
+      // Add a small delay to open delete dialog after editor closes
+      setTimeout(() => {
+        setIsDeleteDialogOpen(true);
+      }, 100);
+    } else {
+      setIsDeleteDialogOpen(true);
+    }
+  };
+
+  const handleDeleteNote = async () => {
+    if (!noteToDelete) return;
+
+    try {
+      await deleteNote(noteToDelete.id);
+      toast({
+        title: "Nota eliminada",
+        description: "La nota ha sido eliminada correctamente.",
+      });
+      setIsDeleteDialogOpen(false);
+      setNoteToDelete(null);
+    } catch (error) {
+      console.error('Error al eliminar nota:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la nota",
+        variant: "destructive",
+      });
     }
   };
 
@@ -161,9 +226,10 @@ export default function Notes() {
         )}
 
         <NoteEditor
-          isOpen={isEditorOpen}
+          isOpen={isEditorOpen && !isDeleting}
           onClose={() => setIsEditorOpen(false)}
           note={editingNote}
+          preselectedSubjectId={selectedSubjectId}
         />
       </div>
     );
@@ -301,7 +367,7 @@ export default function Notes() {
               note={note}
               subjectColor={selectedSubject?.color || "#6366f1"}
               onEdit={() => handleEditNote(note)}
-              onDelete={() => handleDeleteNote(note.id)}
+              onDelete={() => openDeleteDialog(note)}
               onClick={() => handleEditNote(note)}
             />
           ))}
@@ -309,11 +375,56 @@ export default function Notes() {
       )}
 
       <NoteEditor
-        isOpen={isEditorOpen}
+        isOpen={isEditorOpen && !isDeleting}
         onClose={() => setIsEditorOpen(false)}
         note={editingNote}
         preselectedSubjectId={selectedSubjectId}
       />
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+        setIsDeleteDialogOpen(open);
+        if (!open) setIsDeleting(false);
+      }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar esta nota? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          {noteToDelete && (
+            <div className="py-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                <p className="font-medium">{noteToDelete.title}</p>
+              </div>
+              <div className="mt-2">
+                <p className="text-sm text-muted-foreground">
+                  {noteToDelete.content?.substring(0, 100).replace(/<[^>]*>/g, '')}
+                  {noteToDelete.content?.length > 100 ? '...' : ''}
+                </p>
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                Última actualización: {new Date(noteToDelete.updatedAt).toLocaleDateString()}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setNoteToDelete(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteNote}>
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
