@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -60,7 +60,7 @@ const subjectSchema = z.object({
 type SubjectFormValues = z.infer<typeof subjectSchema>;
 
 export default function Subjects() {
-  const { subjects, addSubject, updateSubject, deleteSubject } = useSubjects();
+  const { subjects, addSubject, updateSubject, deleteSubject, refreshSubjects } = useSubjects();
   const { professors } = useProfessors();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -74,6 +74,10 @@ export default function Subjects() {
   const [sortField, setSortField] = useState<"name" | "professor_id">("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [professorFilter, setProfessorFilter] = useState<string>("");
+
+  useEffect(() => {
+    refreshSubjects();
+  }, []);
 
   const form = useForm<SubjectFormValues>({
     resolver: zodResolver(subjectSchema),
@@ -402,8 +406,8 @@ export default function Subjects() {
                               key={color}
                               type="button"
                               className={`w-8 h-8 rounded-full border-2 ${field.value === color
-                                  ? "border-black"
-                                  : "border-transparent"
+                                ? "border-black"
+                                : "border-transparent"
                                 }`}
                               style={{ backgroundColor: color }}
                               onClick={() => field.onChange(color)}

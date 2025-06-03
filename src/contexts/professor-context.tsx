@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/integrations/supabase/client';
+import { useSubjects } from './subject-context';
 
 // Tipos
 export type Professor = {
@@ -35,6 +36,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
   const { user } = useAuth();
+  const {refreshSubjects} = useSubjects();
 
   // Función para cargar la relación profesor-materia
   const loadProfessorSubjects = async (professorIds: string[]) => {
@@ -148,10 +150,15 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         if (professor.subjectIds && professor.subjectIds.length > 0) {
           for (const subjectId of professor.subjectIds) {
             await assignSubjectToProfessor(newProfessor.id, subjectId);
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
 
           // Actualizar los subjectIds en el objeto del profesor
           newProfessor.subjectIds = [...professor.subjectIds];
+          toast({
+            title: "Materias asignadas",
+            description: `Se asignaron ${professor.subjectIds.length} materias al profesor.`,
+          });
         }
 
         setProfessors([newProfessor, ...professors]);
@@ -209,14 +216,18 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
             subjectId => !updatedFields.subjectIds.includes(subjectId)
           );
 
+          // await new Promise(resolve => setTimeout(resolve, 100));
+
           // Agregar nuevas materias
           for (const subjectId of subjectsToAdd) {
             await assignSubjectToProfessor(id, subjectId);
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
 
           // Eliminar materias
           for (const subjectId of subjectsToRemove) {
             await removeSubjectFromProfessor(id, subjectId);
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
       }
@@ -253,12 +264,14 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
       const { error: subjectsError } = await supabase
         .from('subjects')
         .update({ professor_id: null })
-        .eq('id', id)
+        .eq('professor_id', id)
         .eq('user_id', user.id);
 
       if (subjectsError) {
         throw subjectsError;
       }
+
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const { error: relationsError } = await supabase
         .from('professor_subjects')
@@ -269,6 +282,8 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
       if (relationsError) {
         throw relationsError;
       }
+
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const { error } = await supabase
         .from('professors')
@@ -319,6 +334,16 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
 
+      const { error: updateError } = await supabase
+        .from('subjects')
+        .update({ professor_id: professorId })
+        .eq('id', subjectId)
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Error updating subject professor_id:', updateError);
+      }
+
       setProfessors(professors.map(professor => {
         if (professor.id === professorId) {
           return {
@@ -328,6 +353,8 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         }
         return professor;
       }));
+
+      await refreshSubjects(); 
     } catch (error) {
       console.error('Error al asignar materia a profesor:', error);
       toast({
@@ -354,6 +381,17 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
 
+      const { error: updateError } = await supabase
+        .from('subjects')
+        .update({ professor_id: null })
+        .eq('id', subjectId)
+        .eq('professor_id', professorId) // Only update if this professor is assigned
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Error updating subject professor_id:', updateError);
+      }
+
       setProfessors(professors.map(professor => {
         if (professor.id === professorId) {
           return {
@@ -363,6 +401,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         }
         return professor;
       }));
+      await refreshSubjects();
     } catch (error) {
       console.error('Error al eliminar materia de profesor:', error);
       toast({

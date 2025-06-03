@@ -130,7 +130,7 @@ export function NoteEditor({ note, isOpen, onClose, preselectedSubjectId }: Note
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Escribe tu nota aquí..."
-              className="flex-1 resize-none min-h-[300px] md:min-h-[400px]"
+              className="flex-1 resize-none min-h-[200px] md:min-h-[250px]"
             />
           </div>
         </div>

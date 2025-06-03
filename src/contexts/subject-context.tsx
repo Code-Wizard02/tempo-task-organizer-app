@@ -22,6 +22,7 @@ type SubjectContextType = {
   updateSubject: (id: string, subject: Partial<Subject>) => Promise<void>;
   deleteSubject: (id: string) => Promise<void>;
   getSubject: (id: string) => Subject | undefined;
+  refreshSubjects: () => Promise<void>;
 };
 
 // Crear contexto
@@ -33,6 +34,35 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  const refreshSubjects = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      const formattedSubjects: Subject[] = data.map((item) => ({
+        id: item.id,
+        name: item.name,
+        color: item.color,
+        professor_id: item.professor_id,
+        description: item.description,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at
+      }));
+
+      setSubjects(formattedSubjects);
+    } catch (error) {
+      console.error('Error refreshing subjects:', error);
+    }
+  };
 
   // Cargar materias desde Supabase
   useEffect(() => {
@@ -83,7 +113,7 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
   // Añadir materia
   const addSubject = async (subject: Omit<Subject, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('subjects')
@@ -112,9 +142,9 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
           createdAt: data[0].created_at,
           updatedAt: data[0].updated_at
         };
-        
+
         setSubjects([newSubject, ...subjects]);
-        
+
         toast({
           title: "Materia creada",
           description: `La materia "${subject.name}" ha sido creada exitosamente.`,
@@ -133,7 +163,7 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
   // Actualizar materia
   const updateSubject = async (id: string, updatedFields: Partial<Subject>) => {
     if (!user) return;
-    
+
     try {
       const updateData: any = {};
       if (updatedFields.name) updateData.name = updatedFields.name;
@@ -151,14 +181,14 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
 
-      setSubjects(subjects.map(subject => 
-        subject.id === id ? { 
-          ...subject, 
-          ...updatedFields, 
-          updatedAt: new Date().toISOString() 
+      setSubjects(subjects.map(subject =>
+        subject.id === id ? {
+          ...subject,
+          ...updatedFields,
+          updatedAt: new Date().toISOString()
         } : subject
       ));
-      
+
       toast({
         title: "Materia actualizada",
         description: "La materia ha sido actualizada exitosamente.",
@@ -176,10 +206,10 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
   // Eliminar materia
   const deleteSubject = async (id: string) => {
     if (!user) return;
-    
+
     try {
       const subjectToDelete = subjects.find(s => s.id === id);
-      
+
       const { error } = await supabase
         .from('subjects')
         .delete()
@@ -191,7 +221,7 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
       }
 
       setSubjects(subjects.filter(subject => subject.id !== id));
-      
+
       toast({
         title: "Materia eliminada",
         description: `La materia "${subjectToDelete?.name}" ha sido eliminada.`,
@@ -212,14 +242,15 @@ export function SubjectProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SubjectContext.Provider 
-      value={{ 
-        subjects, 
+    <SubjectContext.Provider
+      value={{
+        subjects,
         isLoading,
-        addSubject, 
-        updateSubject, 
+        addSubject,
+        updateSubject,
         deleteSubject,
-        getSubject, 
+        getSubject,
+        refreshSubjects,
       }}
     >
       {children}
