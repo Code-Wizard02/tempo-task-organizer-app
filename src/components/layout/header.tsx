@@ -6,6 +6,7 @@ import { useMobile } from "@/hooks/use-mobile";
 import { Menu } from "lucide-react";
 import { UserNav } from "@/components/layout/user-nav";
 import { ThemeToggleMenu } from "@/components/theme-toggle-menu";
+import { ThemeToggle } from "../theme-toggle";
 
 type HeaderProps = {
   title: string;
@@ -29,7 +30,7 @@ export function Header({ title, toggleSidebar }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <ThemeToggleMenu />
+        <ThemeToggle />
         <UserNav />
       </div>
     </header>
