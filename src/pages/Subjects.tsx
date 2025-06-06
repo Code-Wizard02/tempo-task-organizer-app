@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import MultiSelect from "../components/ui/react-select"; // Asegúrate de tener este componente
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -53,14 +54,25 @@ const subjectSchema = z.object({
   name: z
     .string()
     .min(3, { message: "El nombre debe tener al menos 3 caracteres" }),
+  code: z.string()
+    .min(5, { message: "El código debe tener al menos 5 caracteres" })
+    .max(8, { message: "El código no puede tener más de 8 caracteres" })
+    .refine(
+      (value) => {
+        const codeRegex = /^[A-Z]{2,4}\d{3,4}$/;
+        return codeRegex.test(value.toUpperCase());
+      },
+      { message: "El código no tiene un formato válido (ej: SCA1002)" }
+    ),
   professor_id: z.string().nullable(),
+  professorIds: z.array(z.string()).optional(),
   color: z.string().min(1, { message: "Debe seleccionar un color" }),
 });
 
 type SubjectFormValues = z.infer<typeof subjectSchema>;
 
 export default function Subjects() {
-  const { subjects, addSubject, updateSubject, deleteSubject, refreshSubjects } = useSubjects();
+  const { subjects, addSubject, updateSubject, deleteSubject, refreshSubjects, codeExists } = useSubjects();
   const { professors } = useProfessors();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -83,6 +95,7 @@ export default function Subjects() {
     resolver: zodResolver(subjectSchema),
     defaultValues: {
       name: "",
+      code: "",
       professor_id: null,
       color: "#4f46e5",
     },
@@ -94,9 +107,12 @@ export default function Subjects() {
       .filter((subject) => {
         const matchesSearch = subject.name
           .toLowerCase()
-          .includes(searchTerm.toLowerCase());
+          .includes(searchTerm.toLowerCase()) ||
+          subject.code && subject.code.toLowerCase().includes(searchTerm.toLowerCase());
+
         const matchesProfessor =
           !professorFilter || subject.professor_id === professorFilter;
+
         return matchesSearch && matchesProfessor;
       })
       .sort((a, b) => {
@@ -118,7 +134,7 @@ export default function Subjects() {
   };
 
   const openCreateDialog = () => {
-    form.reset({ name: "", professor_id: null, color: "#4f46e5" });
+    form.reset({ name: "", code: "", professor_id: null, color: "#4f46e5" });
     setEditingSubject(null);
     setIsDialogOpen(true);
   };
@@ -128,6 +144,7 @@ export default function Subjects() {
     if (subject) {
       form.reset({
         name: subject.name,
+        code: subject.code || "",
         professor_id: subject.professor_id,
         color: subject.color,
       });
@@ -154,6 +171,22 @@ export default function Subjects() {
   };
 
   const onSubmit = (data: SubjectFormValues) => {
+    // Validar que el código no esté duplicado
+    if (!editingSubject && codeExists(data.code)) {
+      form.setError("code", {
+        type: "manual",
+        message: "Este código ya está registrado en otra materia",
+      });
+      return;
+    }
+
+    if (editingSubject && codeExists(data.code, editingSubject)) {
+      form.setError("code", {
+        type: "manual",
+        message: "Este código ya está registrado en otra materia",
+      });
+      return;
+    }
     if (editingSubject) {
       updateSubject(editingSubject, data);
       toast({
@@ -196,7 +229,7 @@ export default function Subjects() {
             <div className="flex relative">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre..."
+                placeholder="Buscar por nombre o código..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -260,6 +293,7 @@ export default function Subjects() {
                           ))}
                       </div>
                     </TableHead>
+                    <TableHead>Código</TableHead>
                     <TableHead>Color</TableHead> {/* Nueva columna */}
                     <TableHead
                       className="cursor-pointer"
@@ -285,17 +319,39 @@ export default function Subjects() {
                         {subject.name}
                       </TableCell>
                       <TableCell>
+                        {subject.code || "Sin código"}
+                      </TableCell>
+                      <TableCell>
                         <div
                           className="w-6 h-6 rounded-full"
                           style={{ backgroundColor: subject.color }}
                           title={subject.color} // Tooltip con el código del color
                         ></div>
                       </TableCell>
-                      <TableCell>
+                      {/* <TableCell>
                         {professors.find((p) => p.id === subject.professor_id)
                           ?.full_name || "Sin profesor"}
-                      </TableCell>
+                      </TableCell> */}
 
+                      <TableCell>
+                        {subject.professorIds.length > 0 ? (
+                          <div className="flex flex-col gap-1">
+                            {subject.professorIds.map(profId => {
+                              const professor = professors.find(p => p.id === profId);
+                              return (
+                                <div key={profId} className="text-xs">
+                                  {professor?.full_name || "Profesor desconocido"}
+                                  {profId === subject.professor_id && (
+                                    <span className="ml-1 text-xs text-primary">(Principal)</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Sin profesor</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
@@ -346,8 +402,31 @@ export default function Subjects() {
                   </FormItem>
                 )}
               />
-
               <FormField
+                control={form.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Ej: SCA1002"
+                        {...field}
+                        onChange={(e) => {
+                          // Convertir a mayúsculas automáticamente
+                          field.onChange(e.target.value.toUpperCase());
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground">
+                      Formato: 2-4 letras seguidas de 3-4 números (ejemplos: SCA1002, MT308)
+                    </p>
+                  </FormItem>
+                )}
+              />
+
+              {/* <FormField
                 control={form.control}
                 name="professor_id"
                 render={({ field }) => (
@@ -374,6 +453,44 @@ export default function Subjects() {
                       </Select>
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              /> */}
+
+              <FormField
+                control={form.control}
+                name="professorIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Profesores</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        selected={field.value || []}
+                        options={professors.map(prof => ({
+                          value: prof.id,
+                          label: prof.name
+                        }))}
+                        onChange={(selectedValues) => {
+                          field.onChange(selectedValues);
+                          // Actualizar también el professor_id si hay una selección
+                          if (selectedValues.length > 0) {
+                            form.setValue("professor_id", selectedValues[0]);
+                          } else {
+                            form.setValue("professor_id", null);
+                          }
+                        }}
+                        placeholder="Seleccionar profesores"
+                        emptyIndicator={
+                          <p className="text-center text-muted-foreground">
+                            No hay profesores disponibles
+                          </p>
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground">
+                      El primer profesor seleccionado será considerado como el principal.
+                    </p>
                   </FormItem>
                 )}
               />
