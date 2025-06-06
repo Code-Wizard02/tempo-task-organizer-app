@@ -10,6 +10,7 @@ export type Professor = {
   name: string;
   full_name: string; // Add full_name to match what's used in the Subjects component
   email: string;
+  rfc: string;
   subjectIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -25,6 +26,9 @@ type ProfessorContextType = {
   getProfessorsBySubject: (subjectId: string) => Professor[];
   assignSubjectToProfessor: (professorId: string, subjectId: string) => Promise<void>;
   removeSubjectFromProfessor: (professorId: string, subjectId: string) => Promise<void>;
+  getProfessorByRFC: (rfc: string) => Professor | undefined;
+  validateRFC: (rfc: string) => boolean;
+  rfcExists: (rfc: string, excludeId?: string) => boolean;
 };
 
 // Crear contexto
@@ -36,7 +40,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
   const { user } = useAuth();
-  const {refreshSubjects} = useSubjects();
+  const { refreshSubjects } = useSubjects();
 
   // Función para cargar la relación profesor-materia
   const loadProfessorSubjects = async (professorIds: string[]) => {
@@ -94,6 +98,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
           name: item.name,
           full_name: item.name, // Set full_name to name for backward compatibility
           email: item.email,
+          rfc: item.rfc || '', // Default to empty string if rfc is not provided
           subjectIds: subjectsByProfessor[item.id] || [],
           createdAt: item.created_at,
           updatedAt: item.updated_at
@@ -115,17 +120,56 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
     loadProfessors();
   }, [user, toast]);
 
+
+
+  const validateRFC = (rfc: string): boolean => {
+    // Formato para persona física: 13 caracteres
+    // Formato para persona moral: 12 caracteres
+    const rfcRegexFisica = /^[A-Z&Ñ]{4}[0-9]{6}[A-Z0-9]{3}$/;
+    const rfcRegexMoral = /^[A-Z&Ñ]{3}[0-9]{6}[A-Z0-9]{3}$/;
+
+    const cleanRFC = rfc.toUpperCase().trim();
+    return rfcRegexFisica.test(cleanRFC) || rfcRegexMoral.test(cleanRFC);
+  };
+
+  // Función para verificar si un RFC ya existe
+  const rfcExists = (rfc: string, excludeId?: string): boolean => {
+    if (!rfc) return false;
+    const cleanRFC = rfc.toUpperCase().trim();
+    return professors.some(prof =>
+      prof.rfc.toUpperCase() === cleanRFC && prof.id !== excludeId
+    );
+  };
+
   // Añadir profesor
   const addProfessor = async (professor: Omit<Professor, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
 
     try {
+      if (!professor.rfc || !validateRFC(professor.rfc)) {
+        toast({
+          title: "Error en RFC",
+          description: "El RFC no tiene un formato válido.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (rfcExists(professor.rfc)) {
+        toast({
+          title: "RFC duplicado",
+          description: "Ya existe un profesor con este RFC.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data, error } = await supabase
         .from('professors')
         .insert([
           {
             name: professor.name,
             email: professor.email,
+            rfc: professor.rfc.toUpperCase().trim(),
             user_id: user.id
           }
         ])
@@ -141,6 +185,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
           name: data[0].name,
           full_name: data[0].name, // Set full_name to name
           email: data[0].email,
+          rfc: data[0].rfc,
           subjectIds: [],
           createdAt: data[0].created_at,
           updatedAt: data[0].updated_at
@@ -183,13 +228,34 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     try {
+      if (updatedFields.rfc !== undefined) {
+        if (!validateRFC(updatedFields.rfc)) {
+          toast({
+            title: "Error en RFC",
+            description: "El RFC no tiene un formato válido.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (rfcExists(updatedFields.rfc, id)) {
+          toast({
+            title: "RFC duplicado",
+            description: "Ya existe otro profesor con este RFC.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        updatedFields.rfc = updatedFields.rfc.toUpperCase().trim();
+      }
       const updateData: any = {};
       if (updatedFields.name) {
         updateData.name = updatedFields.name;
-        // Also update full_name if name is updated
         updatedFields.full_name = updatedFields.name;
       }
       if (updatedFields.email) updateData.email = updatedFields.email;
+      if (updatedFields.rfc) updateData.rfc = updatedFields.rfc;
 
       const { error } = await supabase
         .from('professors')
@@ -354,7 +420,7 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         return professor;
       }));
 
-      await refreshSubjects(); 
+      await refreshSubjects();
     } catch (error) {
       console.error('Error al asignar materia a profesor:', error);
       toast({
@@ -423,6 +489,12 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
     return professors.filter(professor => professor.subjectIds.includes(subjectId));
   };
 
+  const getProfessorByRFC = (rfc: string): Professor | undefined => {
+    if (!rfc) return undefined;
+    const cleanRFC = rfc.toUpperCase().trim();
+    return professors.find(professor => professor.rfc.toUpperCase() === cleanRFC);
+  };
+
   return (
     <ProfessorContext.Provider
       value={{
@@ -433,8 +505,11 @@ export function ProfessorProvider({ children }: { children: React.ReactNode }) {
         deleteProfessor,
         getProfessor,
         getProfessorsBySubject,
+        getProfessorByRFC,
         assignSubjectToProfessor,
-        removeSubjectFromProfessor
+        removeSubjectFromProfessor,
+        validateRFC,
+        rfcExists
       }}
     >
       {children}

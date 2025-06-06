@@ -18,13 +18,26 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 const professorSchema = z.object({
   name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres" }),
   email: z.string().email({ message: "Correo electrónico inválido" }),
+  rfc: z.string()
+    .min(12, { message: "El RFC debe tener al menos 12 caracteres" })
+    .max(13, { message: "El RFC no puede tener más de 13 caracteres" })
+    .refine(
+      (value) => {
+        // Formato para persona física: 13 caracteres
+        // Formato para persona moral: 12 caracteres
+        const rfcRegexFisica = /^[A-Z&Ñ]{4}[0-9]{6}[A-Z0-9]{3}$/;
+        const rfcRegexMoral = /^[A-Z&Ñ]{3}[0-9]{6}[A-Z0-9]{3}$/;
+        return rfcRegexFisica.test(value.toUpperCase()) || rfcRegexMoral.test(value.toUpperCase());
+      },
+      { message: "El RFC no tiene un formato válido" }
+    ),
   subjectIds: z.array(z.string()).min(1, { message: "Debe seleccionar al menos una materia" }),
 });
 
 type ProfessorFormValues = z.infer<typeof professorSchema>;
 
 export default function Professors() {
-  const { professors, addProfessor, updateProfessor, deleteProfessor } = useProfessors();
+  const { professors, addProfessor, updateProfessor, deleteProfessor, rfcExists } = useProfessors();
   const { subjects } = useSubjects();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -32,7 +45,7 @@ export default function Professors() {
 
   // Filter and sort states
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<'name' | 'email'>('name');
+  const [sortField, setSortField] = useState<'name' | 'email' | 'rfc'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [subjectFilter, setSubjectFilter] = useState<string>("");
 
@@ -44,6 +57,7 @@ export default function Professors() {
     defaultValues: {
       name: "",
       email: "",
+      rfc: "",
       subjectIds: [],
     },
   });
@@ -54,7 +68,8 @@ export default function Professors() {
       .filter(professor => {
         const matchesSearch =
           professor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          professor.email.toLowerCase().includes(searchTerm.toLowerCase());
+          professor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          professor.rfc && professor.rfc.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesSubject =
           !subjectFilter || professor.subjectIds.includes(subjectFilter);
@@ -70,7 +85,7 @@ export default function Professors() {
       });
   }, [professors, searchTerm, sortField, sortDirection, subjectFilter]);
 
-  const toggleSort = (field: 'name' | 'email') => {
+  const toggleSort = (field: 'name' | 'email' | 'rfc') => {
     if (sortField === field) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
@@ -80,7 +95,7 @@ export default function Professors() {
   };
 
   const openCreateDialog = () => {
-    form.reset({ name: "", email: "", subjectIds: [] });
+    form.reset({ name: "", email: "", rfc: "", subjectIds: [] });
     setEditingProfessor(null);
     setIsDialogOpen(true);
   };
@@ -91,6 +106,7 @@ export default function Professors() {
       form.reset({
         name: professor.name,
         email: professor.email,
+        rfc: professor.rfc || "",
         subjectIds: professor.subjectIds,
       });
       setEditingProfessor(id);
@@ -116,6 +132,21 @@ export default function Professors() {
   };
 
   const onSubmit = (data: ProfessorFormValues) => {
+    if (!editingProfessor && rfcExists(data.rfc)) {
+      form.setError("rfc", {
+        type: "manual",
+        message: "Este RFC ya está registrado en otro profesor",
+      });
+      return;
+    }
+
+    if (editingProfessor && rfcExists(data.rfc, editingProfessor)) {
+      form.setError("rfc", {
+        type: "manual",
+        message: "Este RFC ya está registrado en otro profesor",
+      });
+      return;
+    }
     if (editingProfessor) {
       updateProfessor(editingProfessor, data);
       toast({
@@ -127,6 +158,7 @@ export default function Professors() {
         name: data.name,
         full_name: data.name,
         email: data.email,
+        rfc: data.rfc,
         subjectIds: data.subjectIds,
       };
       addProfessor(newProfessor);
@@ -162,7 +194,7 @@ export default function Professors() {
             <div className="flex relative">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre o email..."
+                placeholder="Buscar por nombre o rfc..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -227,7 +259,7 @@ export default function Professors() {
                         )}
                       </div>
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggleSort('email')}>
+                    {/* <TableHead className="cursor-pointer" onClick={() => toggleSort('email')}>
                       <div className="flex items-center">
                         Correo Electrónico
                         {sortField === 'email' && (
@@ -236,7 +268,18 @@ export default function Professors() {
                             <SortDesc className="ml-1 h-4 w-4" />
                         )}
                       </div>
-                    </TableHead>
+                    </TableHead> */}
+                    {/* <TableHead className="cursor-pointer" onClick={() => toggleSort('rfc')}>
+                      <div className="flex items-center">
+                        RFC
+                        {sortField === 'rfc' && (
+                          sortDirection === 'asc' ?
+                            <SortAsc className="ml-1 h-4 w-4" /> :
+                            <SortDesc className="ml-1 h-4 w-4" />
+                        )}
+                      </div>
+                    </TableHead> */}
+                    <TableHead>RFC</TableHead>
                     <TableHead>Materias</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -245,7 +288,8 @@ export default function Professors() {
                   {filteredProfessors.map((professor) => (
                     <TableRow key={professor.id}>
                       <TableCell className="font-medium">{professor.name}</TableCell>
-                      <TableCell>{professor.email}</TableCell>
+                      {/* <TableCell>{professor.email}</TableCell> */}
+                      <TableCell>{professor.rfc || 'N/A'}</TableCell>
                       <TableCell>
                         {professor.subjectIds.map(subjectId => {
                           const subject = subjects.find(s => s.id === subjectId);
@@ -314,7 +358,31 @@ export default function Professors() {
                   </FormItem>
                 )}
               />
-
+              <FormField
+                control={form.control}
+                name="rfc"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>RFC</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Ej: XAXX010101000"
+                        {...field}
+                        onChange={(e) => {
+                          // Convertir a mayúsculas automáticamente
+                          field.onChange(e.target.value.toUpperCase());
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground">
+                      Para persona física: 13 caracteres (4 letras + 6 números + 3 alfanuméricos)
+                      <br />
+                      Para persona moral: 12 caracteres (3 letras + 6 números + 3 alfanuméricos)
+                    </p>
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="subjectIds"
