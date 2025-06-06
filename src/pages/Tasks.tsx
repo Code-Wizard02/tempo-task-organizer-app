@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Calendar,
   Save,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,11 +61,13 @@ export default function Tasks() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<
-    "all" | "pending" | "completed"
+    "all" | "pending" | "completed" | "overdue"
   >("all");
   const [filterDifficulty, setFilterDifficulty] = useState<
     TaskDifficulty | "all"
   >("all");
+
+  const [filterSubject, setFilterSubject] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -91,13 +94,31 @@ export default function Tasks() {
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description.toLowerCase().includes(searchTerm.toLowerCase());
 
+    const isTaskOverdue = (
+      dueDate: string,
+      dueTime: string | undefined,
+      completed: boolean
+    ) => {
+      if (!dueDate) return false;
+      if (completed) return false;
+
+      const dueDateObj = new Date(`${dueDate}T${dueTime || "23:59"}`);
+      return dueDateObj < new Date();
+    };
+
+    const isOverdue = isTaskOverdue(task.dueDate, task.dueTime, task.completed);
+
     // Filtro por estado
     const matchesStatus =
       filterStatus === "all"
         ? true
         : filterStatus === "pending"
-          ? !task.completed
-          : task.completed;
+          ? !task.completed && !isOverdue
+          : filterStatus === "completed"
+            ? task.completed
+            : filterStatus === "overdue"
+              ? isOverdue
+              : false;
 
     // Filtro por dificultad
     const matchesDifficulty =
@@ -107,8 +128,12 @@ export default function Tasks() {
     const matchesPriority =
       filterPriority === "all" || task.priority === filterPriority;
 
+    const matchesSubject =
+      filterSubject === "all" || task.subjectId === filterSubject;
+
     return (
-      matchesSearch && matchesStatus && matchesDifficulty && matchesPriority
+      matchesSearch && matchesStatus && matchesDifficulty && matchesPriority &&
+      matchesSubject
     );
   });
 
@@ -356,6 +381,20 @@ export default function Tasks() {
     }
   };
 
+  const getOverdueTasks = () => {
+    return tasks.filter(task => {
+      if (task.completed) return false;
+      if (!task.dueDate) return false;
+
+      const dueDateObj = new Date(`${task.dueDate}T${task.dueTime || "23:59"}`);
+      return dueDateObj < new Date();
+    });
+  };
+
+  const filterBySubject = (subjectId: string) => {
+    setFilterSubject(subjectId);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -365,6 +404,11 @@ export default function Tasks() {
           </h2>
           <p className="text-muted-foreground">
             Administra y organiza todas tus tareas aquí
+            {getOverdueTasks().length > 0 && (
+              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                {getOverdueTasks().length} tarea{getOverdueTasks().length !== 1 ? "s" : ""} vencida{getOverdueTasks().length !== 1 ? "s" : ""}
+              </span>
+            )}
           </p>
         </div>
         <Button onClick={() => setIsAddDialogOpen(true)}>
@@ -378,7 +422,7 @@ export default function Tasks() {
           <CardTitle className="text-lg">Filtros y búsqueda</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Búsqueda */}
             <div className="flex relative">
               <Input
@@ -400,7 +444,9 @@ export default function Tasks() {
                     ? "Filtrar por estado"
                     : filterStatus === "pending"
                       ? "Pendientes"
-                      : "Completadas"}
+                      : filterStatus === "completed"
+                        ? "Completadas"
+                        : "Vencidas"}
                 </SelectValue>
 
               </SelectTrigger>
@@ -408,6 +454,7 @@ export default function Tasks() {
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="pending">Pendientes</SelectItem>
                 <SelectItem value="completed">Completadas</SelectItem>
+                <SelectItem value="overdue">Vencidas</SelectItem>
               </SelectContent>
             </Select>
 
@@ -453,9 +500,69 @@ export default function Tasks() {
                 <SelectItem value="3">Baja</SelectItem>
               </SelectContent>
             </Select>
+            <Select
+              value={filterSubject}
+              onValueChange={(value) => setFilterSubject(value)}
+            >
+              <SelectTrigger>
+                <SelectValue>
+                  {filterSubject === "all"
+                    ? "Filtrar por materia"
+                    : subjects.find(s => s.id === filterSubject)?.name || "Materia"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las materias</SelectItem>
+                {subjects.map((subject) => (
+                  <SelectItem
+                    key={subject.id}
+                    value={subject.id}
+                    className="flex items-center"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: subject.color }}
+                      />
+                      {subject.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
+
       </Card>
+      <div className="flex justify-between items-center mb-4">
+        {
+          getOverdueTasks().length > 0 && (
+            <Button
+              variant="destructive"
+              className="mb-4"
+              onClick={() => setFilterStatus("overdue")}
+            >
+              <AlertCircle className="mr-2 h-4 w-4" />
+              Ver {getOverdueTasks().length} tarea{getOverdueTasks().length !== 1 ? "s" : ""} vencida{getOverdueTasks().length !== 1 ? "s" : ""}
+            </Button>
+          )
+        }
+        {(filterStatus !== "all" || filterPriority !== "all" || filterSubject !== "all" || searchTerm) && (
+          <Button
+            variant="outline"
+            className="mb-4"
+            onClick={() => {
+              setFilterStatus("all");
+              setFilterPriority("all");
+              setFilterSubject("all");
+              setSearchTerm("");
+            }}
+          >
+            <X className="mr-2 h-4 w-4" />
+            Limpiar filtros
+          </Button>
+        )}
+      </div>
 
       {/* Card para la tabla */}
       <Card>
@@ -468,9 +575,8 @@ export default function Tasks() {
               <ListTodo className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-2 text-lg font-semibold">No hay tareas</h3>
               <p className="text-sm text-muted-foreground">
-                {searchTerm ||
-                  filterStatus !== "all" ||
-                  filterDifficulty !== "all"
+                {searchTerm || filterStatus !== "all" || filterDifficulty !== "all" ||
+                  filterPriority !== "all" || filterSubject !== "all"
                   ? "No se encontraron tareas con los filtros aplicados"
                   : "Añade tu primera tarea para comenzar"}
               </p>
@@ -505,7 +611,8 @@ export default function Tasks() {
                         key={task.id}
                         className={cn(
                           "hover:bg-gray-100 dark:hover:bg-gray-700",
-                          task.completed && "bg-gray-50 dark:bg-gray-800"
+                          task.completed && "bg-gray-50 dark:bg-gray-800",
+                          isOverdue && !task.completed && "bg-red-50 dark:bg-red-900/20" // Resaltar tareas vencidas
                         )}
                         onClick={() => {
                           openTaskDetails(task);
@@ -565,6 +672,10 @@ export default function Tasks() {
                                 backgroundColor: subject.color,
                                 color: "#fff",
                               }}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Evita abrir el detalle de la tarea
+                                filterBySubject(subject.id);
+                              }}
                             >
                               {subject.name}
                             </span>
@@ -622,6 +733,7 @@ export default function Tasks() {
           )}
         </CardContent>
       </Card>
+
 
       {/* Dialog para añadir una tarea */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -1112,6 +1224,6 @@ export default function Tasks() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
