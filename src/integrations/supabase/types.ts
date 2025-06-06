@@ -125,6 +125,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          rfc: string | null
           id: string
           name: string
           updated_at: string
@@ -133,6 +134,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          rfc: string | null
           id?: string
           name: string
           updated_at?: string
@@ -141,6 +143,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          rfc: string | null
           id?: string
           name?: string
           updated_at?: string
@@ -225,6 +228,7 @@ export type Database = {
       subjects: {
         Row: {
           color: string
+          code: string | null
           created_at: string
           description: string | null
           id: string
@@ -235,6 +239,7 @@ export type Database = {
         }
         Insert: {
           color: string
+          code?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -245,6 +250,7 @@ export type Database = {
         }
         Update: {
           color?: string
+          code?: string | null
           created_at?: string
           description?: string | null
           id?: string
